@@ -7,36 +7,39 @@
 
 == Status
 
-The adapter accompanying this note is a pre-release of a Generic ODBC
-Adapter for Ruby on Rails being developed by
-<B>OpenLink&nbsp;Software</B>[http://www.openlinksw.com]. 
+The adapter accompanying this note is a pre-release of a Generic
+ODBC Adapter for Ruby on Rails being developed by
+<B>OpenLink&nbsp;Software</B>[http://www.openlinksw.com].
 
 The aim of this development is to provide a single ODBC-based adapter
 capable of supporting the most popular DBMSes, in contrast to the
 current approach in the Rails community of each database requiring
 its own adapter.
 
-The adapter is a work-in-progress.  
+The adapter is a work in progress.
 
 It currently supports Ingres r3, Informix 9.3 or later, Oracle 10g
 and OpenLink's Virtuoso
-(Open&nbsp;Source&nbsp;Edition[http://virtuoso.openlinksw.com]). 
+(Open&nbsp;Source&nbsp;Edition[http://virtuoso.openlinksw.com]).
 
 It has also been partially tested against SQL Server 2005 and MySQL
-5.0, although support for these databases isn't complete at this
-time.
+5.0, although support for these databases is not complete at present.
 
 Testing to date has been limited to the ROR 'Expenses' sample
-application described at:
-http://developer.apple.com/tools/rubyonrails.html 
-and the ActiveRecord test modules base_test.rb and migration_test.rb
-on Linux, Windows and Mac OS X using OpenLink's own ODBC drivers
-and the native Virtuoso ODBC client.
+application described at http://developer.apple.com/tools/rubyonrails.html
+and the ActiveRecord test modules base_test.rb and migration_test.rb.
+
+Testing has been performed on Linux, Windows and Mac OS X using
+OpenLink's own ODBC drivers and the native Virtuoso ODBC client.
 
 
 == Pre-Requisites
 
-The Rails adapter requires Christian Werner's 
+The OpenLink ODBC Adapter for Ruby on Rails needs the
+ActiveRecord[http://wiki.rubyonrails.com/rails/pages/ActiveRecord]
+package installed.
+
+The Adapter also requires Christian Werner's
 Ruby&nbsp;ODBC&nbsp;Bridge[http://www.ch-werner.de/rubyodbc]
 (release 0.998 or later), to bridge to an underlying ODBC driver.
 
@@ -45,56 +48,112 @@ Ruby&nbsp;ODBC&nbsp;Bridge[http://www.ch-werner.de/rubyodbc]
 
 In the accompanying sources, the lib directory structure is equivalent
 to the lib directory located under ACTIVE_RECORD_ROOT in your main
-Ruby tree where ACTIVE_RECORD_ROOT will be something like:
+Ruby tree.
 
-    c:\ruby\lib\ruby\gems\1.8\gems\activerecord-x.y.z	    (Windows)
+On Windows ACTIVE_RECORD_ROOT will be something like:
 
-or:
+    c:\ruby\lib\ruby\gems\1.8\gems\activerecord-x.y.z
 
-    /usr/local/lib/ruby/gems/1.8/gems/activerecord-x.y.z    (Unix)
+On Unix and Mac OS X ACTIVE_RECORD_ROOT will be something like:
 
-lib contains the files which constitute the new ODBC adapter.
+    /usr/lib/ruby/gems/1.8/gems/activerecord-x.y.z
+or
+    /usr/local/lib/ruby/gems/1.8/gems/activerecord-x.y.z
 
-test contains the fixture definitions for testing the adapter.
+On Mac OS X using Locomotive ACTIVE_RECORD_ROOT will be
+something like:
+
+    /Applications/Locomotive2/bundles/rails112.locobundle/i386/lib/ruby/gems/1.8/gems/activerecord-x.y.z
+
+lib/ contains the files which constitute the new ODBC adapter.
+
+test/ contains the fixture definitions for testing the adapter.
 
 support/odbc_rails.diff contains some patches to ActiveRecord.
 
-These will be submitted to the ActiveRecord source maintainer in due
-course, if we request that the OpenLink ODBC Adapter for Ruby on Rails be
-added to the ActiveRecord source distribution to accompany the existing
-Rails adapters.
+These will be submitted to the ActiveRecord source maintainer in
+due course, if we request that the OpenLink ODBC Adapter for Ruby
+on Rails be added to the ActiveRecord source distribution to accompany
+the existing Rails adapters.
 
-Only one patch in this diff file is really necessary - that to:
+Only one patch in this diff file is really necessary - that to
 
-    lib/active_record/connection_adapters/abstract/schema_definitions.rb.
+    lib/active_record/connection_adapters/abstract/schema_definitions.rb
 
-This fixes what appears to me to be a bug in Active Record. 
+This fixes what appears to be a bug in Active Record.
 
-The patches to base_test.rb and migration_test.rb aren't essential.
+The patches to base_test.rb and migration_test.rb are not essential.
 However, they modify or bypass certain tests to cope with limitations
 of particular databases. Other developers have previously modified
-the tests similarly to cope with limitations of other Rails supported
-databases. modified_files contains the patched versions of the files
-touched by the diff file.
+the tests similarly to cope with limitations of other Rails-supported
+databases. modified_files/ contains the patched versions of the
+files touched by the diff file.
 
 
 == Installation
 
-To install the adapter either run install_odbc.rb e.g.
+The OpenLink ODBC adapter for Ruby on Rails can be installed in
+various ways.
 
-    % sudo ruby install_odbc.rb
+When using <tt>rake install</tt> or running the install_odbc.rb
+script by hand, the script tries to determine the location of the
+activerecord package within your Ruby installation and allows you
+to overrule the directory it has found with a directory of your
+choice. If more than one version of activerecord is found, the
+default will be the latest version.
 
-or:
+On Mac OS X the installation script is also capable of locating
+Locomotive and will ask to install in there.
 
-    % su
+The install_odbc.rb script also verifies that the pre-requisites
+are installed.
+
+If all else fails this document also describes the steps to install
+the ODBC adapter into activerecord manually.
+
+
+=== Using rake
+
+The simplest way to install the adapter is by using the following
+command as root:
+
+    # rake install
+
+or if your system supports sudo:
+
+    $ sudo rake install
+
+
+The Rakefile also defines some targets specifically for developers:
+
+    $ rake rdoc         # Generate rdoc documentation in ~/doc
+
+    $ rake package	# Create distribution package in ~/distrib
+
+    $ rake clean	# Remove generated files and directories
+
+
+=== Running installation script
+
+The second way of installing the adapter is running the
+<tt>install_odbc.rb</tt> script as root .
+
     # ruby install_odbc.rb
 
-or perform the equivalent operations manually, as outlined below:
+or if your system supports sudo:
+
+    $ sudo ruby install_odbc.rb
+
+
+=== Installing files manually
+
+The third way of installing the adapter is by performing the
+installation steps yourself.
 
 * Add the ODBC adapter to the list of adapters recognized by ActiveRecord.
 
-  1. Edit ACTIVE_RECORD_ROOT/lib/active_record.rb 
-      (where, on Windows, ACTIVE_RECORD_ROOT will be something like 
+  1. Edit ACTIVE_RECORD_ROOT/lib/active_record.rb
+      (where, on Windows, ACTIVE_RECORD_ROOT will be something like
       c:\ruby\lib\ruby\gems\1.8\gems\activerecord-x.x.x)
 
   2. Edit the line:
@@ -105,9 +164,9 @@ or perform the equivalent operations manually, as outlined below:
 
         RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql ... openbase odbc)
 
-* Copy odbc_adapter.rb to the ACTIVE_RECORD_ROOT/lib/active_record/connection_adapters directory
+* Copy odbc_adapter.rb to the ACTIVE_RECORD_ROOT/lib/active_record/connection_adapters/ directory
 
-* Copy the odbcext_*.rb files to the ACTIVE_RECORD_ROOT/lib/active_record/vendor directory
+* Copy the odbcext_*.rb files to the ACTIVE_RECORD_ROOT/lib/active_record/vendor/ directory
 
 
 == Configuring the Adapter
@@ -116,12 +175,28 @@ Examples of the required connection parameters can be found in
 
    test/connections/native_odbc/connection.rb
 
-If you enable call tracing by setting :trace => true,  specify the
+If you enable call-tracing by setting :trace => true,  specify the
 logger output file as illustrated in connection.rb, e.g.
 
     ActiveRecord::Base.logger = Logger.new("debug_odbc.log")
 
+
 == License
 
-The OpenLink ODBC Adapter for Ruby on Rails is released under the MIT license
-(See COPYING).
+The OpenLink ODBC Adapter for Ruby on Rails is released under the
+MIT license (see the file COPYING).
+
+
+=== Submitting fixes and enhancements
+
+Patches and new contributions can be submitted as diffs from the
+current CVS archive by:
+
+    $ cvs add newfiles
+
+    $ cvs -z3 diff -uN > diffs
+
+Patches and  contributions can be send to the OpenLink iODBC source
+archive mainainter at mailto:iodbc@openlinksw.com to be included
+in the next distribution. Please provide accompanying documentation
+on which bugs are fixed or new features are introduced.
