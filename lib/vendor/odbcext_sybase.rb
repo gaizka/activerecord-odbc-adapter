@@ -34,7 +34,9 @@ module ODBCExt
   # false from #prefetch_primary_key?
   def last_insert_id(table, sequence_name, stmt = nil)
     @logger.unknown("ODBCAdapter#last_insert_id>") if @trace
-    select_value("select @@IDENTITY", 'last_insert_id')
+    #TODO: Fixme - Doesn't work with OpenLink TDS driver against Sybase
+    #select_value("select @@IDENTITY", 'last_insert_id')
+    select_value("select max(syb_identity) from #{table}", 'last_insert_id')
   end
   
   # ------------------------------------------------------------------------
@@ -93,7 +95,7 @@ module ODBCExt
     defaults.each {|constraint|
       execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
     }                      
-    execute "ALTER TABLE #{table_name} DROP COLUMN #{quote_column_name(column_name)}"                   
+    execute "ALTER TABLE #{table_name} DROP #{quote_column_name(column_name)}"                   
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise
@@ -101,18 +103,12 @@ module ODBCExt
   
   def change_column(table_name, column_name, type, options = {})
     @logger.unknown("ODBCAdapter#change_column>") if @trace
-    sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"]
     if options[:default]
-      # Remove default constraints first
-      defaults = select_all "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
-      defaults.each {|constraint|
-        execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
-      }              
-      sql_commands << "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{options[:default]} FOR #{column_name}"
+      # Sybase ASE's ALTER TABLE statement doesn't allow a column's DEFAULT to be changed.
+      raise ActiveRecord::ActiveRecordError, 
+        "Sybase ASE does not support changing a column's DEFAULT definition"
     end
-    sql_commands.each {|c|
-      execute(c)
-    }          
+    execute "ALTER TABLE #{table_name} MODIFY #{column_name} #{type_to_sql(type, options[:limit])}"
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise
@@ -143,7 +139,21 @@ module ODBCExt
     # Hide primary key indexes.
     super(table_name, name).delete_if { |i| i.name =~ /^PK_/ }
   end
+  
+  def add_column_options!(sql, options) # :nodoc:
+    @logger.unknown("ODBCAdapter#add_column_options!>") if @trace
+    @logger.unknown("args=[#{sql}]") if @trace
+    sql << " DEFAULT #{quote(options[:default], options[:column])}" unless options[:default].nil?
     
+    if column_type_allows_null?(sql, options)
+      sql << (options[:null] == false ? " NOT NULL" : " NULL")
+    end
+    sql   																											
+  rescue Exception => e
+    @logger.unknown("exception=#{e}") if @trace
+    raise ActiveRecord::StatementInvalid, e.message
+  end
+  
   # ------------------------------------------------------------------------
   # Private methods to support methods above
   #
@@ -181,5 +191,22 @@ module ODBCExt
   def has_autounique_column(table_name)
     !get_autounique_column(table_name).nil?
   end
+  
+  def column_type_allows_null?(sql, options)
+    # Sybase columns are NOT NULL by default, so explicitly set NULL
+    # if :null option is omitted.  Disallow NULLs for boolean.
+    col = options[:column]
+    return false if col && col[:type] == :primary_key
     
+    # Force options[:null] to be ignored for BIT (:boolea) columns
+    # by returning false
+    isBitCol = !(sql =~ /\s+bit(\s+default)?/i).nil? || (col && col[:type] == :boolean)
+    hasDefault = !$1.nil? || options[:default]
+    
+    # If no default clause found on a boolean column, add one.
+    sql << " DEFAULT 0" if isBitCol && !hasDefault
+    
+    !isBitCol
+  end
+  
 end # module

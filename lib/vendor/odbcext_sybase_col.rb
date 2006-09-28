@@ -24,51 +24,26 @@
 #  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 
-print "Using native ODBC\n"
-require_dependency 'fixtures/course'
-require 'logger'
-
-#ActiveRecord::Base.logger = Logger.new(STDOUT)
-#ActiveRecord::Base.logger = Logger.new("debug_odbc.log")
-#Logger level default is the lowest available, Logger::DEBUG
-#ActiveRecord::Base.logger.level = Logger::WARN
-ActiveRecord::Base.colorize_logging = false
-
-ActiveRecord::Base.establish_connection(
-  :adapter  => "odbc",
-  :dsn	    => "a604-ora10-alice-testdb1",
-  :username => "oracle",
-  :password => "oracle",
-  :trace => true
-)
-
-Course.establish_connection(
-  :adapter  => "odbc",
-  :dsn	    => "a604-ora10-alice-testdb2",
-  :username => "oracle",
-  :password => "oracle",
-  :trace => true
-)
-
-###########################################
-# Using Sybase
-
-#=begin
-ActiveRecord::Base.establish_connection(
-  :adapter  => "odbc",
-  :dsn	    => "a609_syb15_trilby_testdb3",
-  :username => "sa",
-  :trace => true,
-  :convert_numeric_literals => true
-)
-
-Course.establish_connection(
-  :adapter  => "odbc",
-  :dsn	    => "a609_syb15_trilby_testdb4",
-  :username => "sa",
-  :trace => true,
-  :convert_numeric_literals => true
-)
-#=end
-
-
+module ODBCColumnExt
+  
+  # Is the column a numeric autoincrementing column?
+  def auto_unique?
+    @autounique
+  end
+  
+  private
+  
+  def autoUnique?
+    @nativeType =~ /\bidentity\b/i
+  end
+  
+  #private
+  
+  def default_preprocess(nativeType, default)
+    return default if default.nil?
+    default.replace($2.strip) if default =~ /(DEFAULT +)(.*)/i
+    default.replace($1) if default =~ /^'(.*)'$/
+    default
+  end
+  
+end # module

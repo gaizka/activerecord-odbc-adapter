@@ -68,7 +68,8 @@ if ActiveRecord::Base.connection.supports_migrations?
       assert_nothing_raised { Person.connection.remove_index("people", :name => "key") }
 
       # Sybase adapter does not support indexes on :boolean columns
-      unless current_adapter?(:SybaseAdapter)
+      unless current_adapter?(:SybaseAdapter) || 
+             current_adapter?(:ODBCAdapter) && ActiveRecord::Base.connection.dbmsName == :sybase
         assert_nothing_raised { Person.connection.add_index("people", %w(last_name first_name administrator), :name => "named_admin") }
         assert_nothing_raised { Person.connection.remove_index("people", :name => "named_admin") }
       end
@@ -117,8 +118,9 @@ if ActiveRecord::Base.connection.supports_migrations?
         assert_equal true, two.default == 1
         assert_equal false, three.default != 0
       elsif current_adapter?(:ODBCAdapter) && 
-          [:informix, :ingres, :virtuoso, :oracle].include?(ActiveRecord::Base.connection.dbmsName)
-        # Above databases/ODBC driver doesn't support native booleans
+          [:informix, :ingres, :virtuoso, :oracle, :mysql, :microsoftsqlserver].include?(ActiveRecord::Base.connection.dbmsName)
+        # Above databases/ODBC drivers don't support native booleans.
+        # They use an integer type instead.
         assert_equal true, two.default == 1
         assert_equal false, three.default != 0        
       else
@@ -134,7 +136,8 @@ if ActiveRecord::Base.connection.supports_migrations?
     # SQL Server and Sybase will not allow you to add a NOT NULL column
     # to a table without specifying a default value, so the
     # following test must be skipped  
-    unless current_adapter?(:SQLServerAdapter) || current_adapter?(:SybaseAdapter)
+    unless current_adapter?(:SQLServerAdapter) || current_adapter?(:SybaseAdapter) ||
+           current_adapter?(:ODBCAdapter) && [:microsoftsqlserver, :sybase].include?(ActiveRecord::Base.connection.dbmsName)
       def test_add_column_not_null_without_default
 
         Person.connection.create_table :testings do |t|
@@ -244,7 +247,7 @@ if ActiveRecord::Base.connection.supports_migrations?
         
         begin
           # Some DBs complain girlfriend column already exists on two consecutive add_column calls
-          unless current_adapter?(:ODBCAdapter) && [:informix, :oracle].include?(ActiveRecord::Base.connection.dbmsName)        
+          unless current_adapter?(:ODBCAdapter) && [:informix, :oracle, :mysql, :microsoftsqlserver, :sybase].include?(ActiveRecord::Base.connection.dbmsName)        
             Person.connection.add_column "people", "girlfriend", :string
           end
           Person.connection.add_column "people", "girlfriend", :string, :limit => 40
@@ -345,8 +348,9 @@ if ActiveRecord::Base.connection.supports_migrations?
       end    
     end
 
-    # Ingres doesn't support ALTER TABLE ADD COLUMN WITH NULL WITH DEFAULT. Skip test.
-    unless current_adapter?(:ODBCAdapter) && [:ingres].include?(ActiveRecord::Base.connection.dbmsName)    
+    # Ingres doesn't support ALTER TABLE ADD COLUMN WITH NULL WITH DEFAULT.
+    # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
+    unless current_adapter?(:ODBCAdapter) && [:ingres, :sybase].include?(ActiveRecord::Base.connection.dbmsName)    
       def test_change_column_with_new_default
         Person.connection.add_column "people", "administrator", :boolean, :default => 1
         Person.reset_column_information            

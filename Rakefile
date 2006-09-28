@@ -34,7 +34,7 @@ require 'rake/rdoctask'
 #
 PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 PKG_NAME      = 'rails-odbc'
-PKG_VERSION   = '1.0'
+PKG_VERSION   = '1.1-pre1'
 PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
 
 

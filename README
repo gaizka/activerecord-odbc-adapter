@@ -2,7 +2,7 @@
 
 (C) 2006 OpenLink Software
 
-21-August-06
+27-September-06
 
 
 == Status
@@ -18,8 +18,8 @@ its own adapter.
 
 The adapter is a work in progress.
 
-It currently supports Ingres r3, Informix 9.3 or later, Oracle 10g
-and OpenLink's Virtuoso
+It currently supports Ingres r3, Informix 9.3 or later, Oracle 10g,
+MySQL 5.x, Sybase ASE 15, SQL Server 2000 and OpenLink's Virtuoso
 (Open&nbsp;Source&nbsp;Edition[http://virtuoso.openlinksw.com]).
 
 It has also been partially tested against SQL Server 2005 and MySQL
@@ -41,7 +41,7 @@ package installed.
 
 The Adapter also requires Christian Werner's
 Ruby&nbsp;ODBC&nbsp;Bridge[http://www.ch-werner.de/rubyodbc]
-(release 0.998 or later), to bridge to an underlying ODBC driver.
+(release 0.9991 or later), to bridge to an underlying ODBC driver.
 
 
 == Contents

@@ -28,7 +28,6 @@ require 'active_record/connection_adapters/abstract_adapter'
 
 begin
   require_library_or_gem 'odbc' unless self.class.const_defined?(:ODBC)
-
 #-------------------------------------------------------------------------
 
 module ActiveRecord
@@ -43,9 +42,11 @@ module ActiveRecord
       username = config[:username] ? config[:username].to_s : nil
       password = config[:password] ? config[:password].to_s : nil
       trace = config[:trace] ? config[:trace] : false
+      conv_num_lits = config[:convert_numeric_literals] ? config[:convert_numeric_literals] : false
       conn = ODBC::connect(dsn, username, password)      
       conn.autocommit = true
-      ConnectionAdapters::ODBCAdapter.new(conn, [dsn, username, password], trace, logger)
+      ConnectionAdapters::ODBCAdapter.new(conn, [dsn, username, password],
+          trace, conv_num_lits, logger)
     end
   end # class Base
      
@@ -53,26 +54,31 @@ module ActiveRecord
     
     # This is an ODBC adapter for the ActiveRecord framework.
     #
-    # The ODBC adapter requires the Ruby ODBC module (version 0.998 or later),
+    # The ODBC adapter requires the Ruby ODBC module (version 0.9991 or later),
     # available from http://raa.ruby-lang.org/project/ruby-odbc
     #
-    # == Status at 16-Aug-2006
+    # == Status at 27-Sep-2006
     #
     # The current adapter supports Ingres r3, Informix 9.3 or later, 
-    # Virtuoso (Open-Source Edition) 4.5 and Oracle 10g. It has also been 
-    # partially tested against SQL Server and MySQL, although the support 
-    # for these databases isn't complete at this time.
+    # Virtuoso (Open-Source Edition) 4.5, Oracle 10g, MySQL 5, 
+    # SQL Server 2000 and Sybase ASE 15.
     #
     # == Testing Environments
     #
     # The adapter has been tested in the following environments:
     # * Windows XP, Linux Fedora Core, Mac OS X
     # The iODBC Driver Manager was used on Linux and Mac OS X.
-    # OpenLink ODBC drivers/agents were used against Informix, Ingres and
-    # Oracle. The native Virtuoso ODBC client was used when testing Virtuoso.
     #
-    # Note: If using an OpenLink ODBC driver, use only OpenLink's _ANSI_ drivers.
-    # OpenLink's _Unicode_ ODBC drivers are not supported.
+    # Databases supported using OpenLink ODBC drivers:
+    # * Informix, Ingres, Oracle, MySQL, SQL Server, Sybase
+    # Databases supported using the database's own native ODBC driver:
+    # * Virtuoso, MySQL
+    #
+    # === Note
+    # * If using an OpenLink ODBC driver, use only OpenLink's _ANSI_ drivers.
+    #   OpenLink's _Unicode_ ODBC drivers are not supported.
+    # * OpenLink ODBC drivers work with v0.998 or later of the Ruby ODBC bridge.
+    # * The native MySQL driver requires v0.9991 of the Ruby ODBC bridge.
     #
     # == Information
     #
@@ -98,6 +104,10 @@ module ActiveRecord
     #   referenced by ActiveRecord::Base.logger. If omitted, <tt>:trace</tt>
     #   defaults to <tt>false</tt>. (We also suggest setting 
     #   ActiveRecord::Base.colorize_logging = false).
+    # <tt>:convert_numeric_literals</tt>::
+    #   If set to <tt>true</tt>, suppresses quoting of numeric literals.
+    #   If omitted, <tt>:convert_numeric_literals</tt> defaults to 
+    #   <tt>false</tt>.
     #   
     # == Usage Notes
     # === Informix
@@ -122,8 +132,22 @@ module ActiveRecord
     # === Oracle
     # If using an OpenLink Oracle driver or agent, the 'jetfix' configuration
     # option must be enabled to obtain the correct type mappings.
+    # 
+    # === Sybase
+    # Set the connection option :convert_numeric_literals to <tt>true</tt> to 
+    # avoid errors similar to: 
+    # "Implicit conversion from datatype 'VARCHAR' to 'INT' is not allowed."
+    #
+    # :boolean columns use the BIT SQL type, which does not allow nulls or 
+    # indexes. If a DEFAULT is not specified for #create_table, the
+    # column will be declared with DEFAULT 0.
+    #
+    # Migrations are supported, but for ALTER TABLE commands to
+    # work, the database must have the database option 'select into' set to
+    # 'true' with sp_dboption.
+
     class ODBCAdapter < AbstractAdapter
-    
+
       #-------------------------------------------------------------------
       # DbmsInfo holds DBMS-dependent information which cannot be derived 
       # satisfactorily through ODBC
@@ -132,14 +156,28 @@ module ActiveRecord
         @@dbmsInfo = nil        
         @@dbms_lookup_tbl = {
           # Uses dbmsName as key and dbmsMajorVer as a subkey.          
+          :informix => {
+            :any_version => {
+              :primary_key => "serial primary key",
+              :has_autoincrement_col => true,
+              :supports_count_distinct => true
+            }
+          },
+          :ingres => {
+            :any_version => {
+              :primary_key => "integer primary key not null",
+              :has_autoincrement_col => false,
+              :supports_count_distinct => true
+            }
+          },
           :mysql => {
             :any_version => {
-              :primary_key => "int(11) default null auto_increment primary key",
+              :primary_key => "int(11) not null auto_increment primary key",
               :has_autoincrement_col => true,
               :supports_count_distinct => true
             },
 			5 => {
-              :primary_key => "int(11) default null auto_increment primary key",
+              :primary_key => "int(11) not null auto_increment primary key",
               :has_autoincrement_col => true,
               :supports_count_distinct => true
             }
@@ -156,13 +194,6 @@ module ActiveRecord
               :supports_count_distinct => true
             }
           },
-          :virtuoso => {
-            :any_version => {
-              :primary_key => "int NOT NULL IDENTITY PRIMARY KEY",
-              :has_autoincrement_col => true,
-              :supports_count_distinct => true
-            }
-          },
           :oracle => {
             :any_version => {
               :primary_key => "number(10) PRIMARY KEY NOT NULL",
@@ -170,17 +201,17 @@ module ActiveRecord
               :supports_count_distinct => true
             }
           },
-          :informix => {
+          :sybase => {
             :any_version => {
-              :primary_key => "serial primary key",
+              :primary_key => "int IDENTITY PRIMARY KEY",
               :has_autoincrement_col => true,
               :supports_count_distinct => true
             }
           },
-          :ingres => {
+          :virtuoso => {
             :any_version => {
-              :primary_key => "integer primary key not null",
-              :has_autoincrement_col => false,
+              :primary_key => "int NOT NULL IDENTITY PRIMARY KEY",
+              :has_autoincrement_col => true,
               :supports_count_distinct => true
             }
           }
@@ -240,6 +271,7 @@ module ActiveRecord
         end
         
       end # class DSInfo
+
       #---------------------------------------------------------------------
       
       # ODBC constants missing from Christian Werner's Ruby ODBC driver
@@ -266,7 +298,7 @@ module ActiveRecord
       @@trace = nil
       #--
       
-      def initialize(connection, connection_options, trace, logger = nil)
+      def initialize(connection, connection_options, trace, convert_numeric_literals, logger = nil)
         @@trace = trace && logger if !@@trace
         # Mixins in odbcext_xxx.rb included using Object#extend can't access
         # @@trace. Why?
@@ -279,6 +311,7 @@ module ActiveRecord
         @logger.unknown("ODBCAdapter#initialize>") if @@trace
         
         @connection, @connection_options = connection, connection_options
+        @convert_numeric_literals = convert_numeric_literals
         # Caches SQLGetInfo output
         @dsInfo = DSInfo.new(connection)
         # Caches SQLGetTypeInfo output
@@ -388,8 +421,10 @@ module ActiveRecord
         when String
           if column && column.type == :binary && column.class.respond_to?(:string_to_binary)
               "'#{quote_string(column.class.string_to_binary(value))}'"
-          elsif column && [:integer, :float].include?(column.type) 
-            value.to_s
+          elsif (column && [:integer, :float].include?(column.type)) ||
+                (column.nil? && @convert_numeric_literals && 
+                 (value =~ /^[-+]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?$/))
+              value
           else
               "'#{quote_string(value)}'" # ' (for ruby-mode)
           end
@@ -688,7 +723,8 @@ module ActiveRecord
       def execute(sql, name = nil)
         @logger.unknown("ODBCAdapter#execute>") if @@trace
         @logger.unknown("args=[#{sql}|#{name}]") if @@trace
-        if sql =~ /^\s*INSERT/i && [:microsoftsqlserver, :virtuoso].include?(@dbmsName)
+        if sql =~ /^\s*INSERT/i && 
+           [:microsoftsqlserver, :virtuoso, :sybase].include?(@dbmsName)
           # Guard against IDENTITY insert problems caused by explicit inserts
           # into autoincrementing id column.
           insert(sql, name)
@@ -802,7 +838,12 @@ module ActiveRecord
         stmt = @connection.tables
         resultSet = stmt.fetch_all || []
         resultSet.each do |row| 
-          tblNames << activeRecIdentCase(row[2]) if row[1].casecmp(currentUser) == 0
+          # Native MySQL ODBC driver doesn't support schema names
+          if @dbmsName == :mysql
+            tblNames << activeRecIdentCase(row[2])
+          else
+            tblNames << activeRecIdentCase(row[2]) if row[1].casecmp(currentUser) == 0
+          end
         end
         stmt.drop
         tblNames
@@ -842,10 +883,16 @@ module ActiveRecord
           # So force nullability of 'id' columns
           colNullable = false if colName == 'id'
           
-          # Some ODBC drivers return string column default in quoted form
+          # SQL Server ODBC drivers may wrap default value in parentheses
+          if colDefault =~ /^\('(.*)'\)$/ # SQL Server character default
+            colDefault = $1
+          elsif colDefault =~ /^\((.*)\)$/ # SQL Server numeric default
+            colDefault = $1
+          # ODBC drivers should return string column defaults in quotes
           # Oracle also includes a trailing space.
-          colDefault = $1 if colDefault =~ /^'(.*)' *$/
-
+          elsif colDefault =~ /^'(.*)' *$/
+            colDefault = $1
+          end
           cols << ODBCColumn.new(activeRecIdentCase(colName), table_name, 
               colDefault, colSqlType, colNativeType, colNullable, colLimit, 
               @odbcExtFile+"_col", @typeInfo)
@@ -1089,7 +1136,7 @@ module ActiveRecord
         super(sql, name)
       rescue Exception => e
         @logger.unknown("exception=#{e}") if @@trace
-        raise InvalidStatement, e.message
+        raise StatementInvalid, e.message
       end
       
       # Returns an array of the values of the first column in a select.
@@ -1101,7 +1148,7 @@ module ActiveRecord
         super(sql, name)
       rescue Exception => e
         @logger.unknown("exception=#{e}") if @@trace
-        raise InvalidStatement, e.message
+        raise StatementInvalid, e.message
       end
       
       # Wrap a block in a transaction. Returns result of block.
@@ -1176,7 +1223,7 @@ module ActiveRecord
         super(sql, options)																												
       rescue Exception => e
         @logger.unknown("exception=#{e}") if @@trace
-        raise InvalidStatement, e.message
+        raise StatementInvalid, e.message
       end
       
       # No need to implement beyond tracing wrapper
@@ -1205,18 +1252,20 @@ module ActiveRecord
       def dbmsNameToSym(dbmsName)
         if dbmsName =~ /informix/i
           symbl = :informix
-        elsif dbmsName =~ /sql.*server/i
-          symbl = :microsoftsqlserver
+        elsif dbmsName =~ /ingres/i
+          symbl = :ingres
         elsif dbmsName =~ /my.*sql/i
           symbl = :mysql
-        elsif dbmsName =~ /virtuoso/i
-          symbl = :virtuoso 
         elsif dbmsName =~ /oracle/i
           symbl = :oracle 
         elsif dbmsName =~ /postgres/i
           symbl = :postgresql
-        elsif dbmsName =~ /ingres/i
-          symbl = :ingres
+        elsif dbmsName =~ /sql.*server/i
+          symbl = :microsoftsqlserver
+        elsif dbmsName =~ /sybase/i
+          symbl = :sybase
+        elsif dbmsName =~ /virtuoso/i
+          symbl = :virtuoso 
         else
           raise ActiveRecord::ActiveRecordError, "ODBCAdapter: Unsupported database (#{dbmsName})"
         end
@@ -1229,6 +1278,7 @@ module ActiveRecord
       # Where more than one ODBC SQL type is associated with an abstract type,
       # the SQL types in the value array are in order of preference.
       def genericTypeToOdbcSqlTypesMap
+        map = 
         {
           :primary_key => [ODBC::SQL_INTEGER, ODBC::SQL_SMALLINT],
           :string => [ODBC::SQL_VARCHAR],
@@ -1241,10 +1291,27 @@ module ActiveRecord
           ODBC::SQL_TYPE_TIMESTAMP, ODBC::SQL_TIMESTAMP],
           :date => [ODBC::SQL_TYPE_DATE, ODBC::SQL_DATE,
           ODBC::SQL_TYPE_TIMESTAMP, ODBC::SQL_TIMESTAMP],
-          :binary => [ ODBC::SQL_LONGVARBINARY, ODBC::SQL_VARBINARY],
+          :binary => [ ODBC::SQL_LONGVARBINARY, ODBC::SQL_VARBINARY],          
           :boolean => [ODBC::SQL_BIT, ODBC::SQL_TINYINT, ODBC::SQL_SMALLINT,
-          ODBC::SQL_INTEGER]
+          ODBC::SQL_INTEGER]         
         }
+
+#       MySQL:                       
+#       Mapping of :boolean to ODBC::SQL_BIT is removed because it does not
+#       work with the BIT datatype in MySQL 5.0.3 or later.
+#         - Prior to MySQL 5.0.3: BIT was a synonym for TINYINT(1).
+#         - MySQL 5.0.3: BIT datatype is supported only for MyISAM tables,
+#           not InnoDB tables (which ActiveRecord requires for transaction 
+#           support).
+#         - Ruby ODBC Bridge attempts to fetch SQL_BIT column to SQL_C_LONG.
+#           With MySQL ODBC driver (3.51.12)
+#           - 'select b from ...' returns 0 for a bit value of 0x1
+#           - 'select hex(b) from ...' returns 1 for a bit value of 0x1                    
+        if @dbmsName == :mysql  
+          map[:boolean].delete(ODBC::SQL_BIT) { raise ActiveRecordError, "SQL_BIT not found" }
+        end
+        
+        map
       end
       
       # Creates a Hash describing a mapping from an abstract type to a
@@ -1285,14 +1352,17 @@ module ActiveRecord
           # creation parameter.
           if (createParams && createParams.strip.length > 0)
             res[:limit] = nativeTypeDesc[2] # SQLGetTypeInfo: COL_SIZE
-            # HACK!
             # The max row length in Ingres is typically around 2008 bytes,
             # depending on the default page size.
             # Limit the reported max length of the native type which maps to
             # :string to 255, instead of the actual max length of 2000.
             # This is done to reduce the chances of add_column() exceeding 
             # the maximum row length and Ingres returning an error.
-            res[:limit] = 255 if @dbmsName == :ingres && abstractType == :string
+            # 
+            # Similarly with Sybase, reduce the max. :string length from 2000
+            # to 255, to avoid add_index exceeding the max. allowed index size
+            # of 1250 bytes when creating a composite index.
+            res[:limit] = 255 if [:ingres, :sybase].include?(@dbmsName) && abstractType == :string
           end					
         end
         res
@@ -1400,7 +1470,7 @@ module ActiveRecord
     #---------------------------------------------------------------------
     
     class ODBCColumn < Column #:nodoc:
-      
+
       def initialize (name, tableName, default, odbcSqlType, nativeType, 
           null = true, limit = nil, dbExt = nil, typeInfo = nil)
       
@@ -1584,7 +1654,6 @@ module ActiveRecord
 end # module ActiveRecord
 
 #-------------------------------------------------------------------------
-
 rescue LoadError
   module ActiveRecord # :nodoc:
     class Base

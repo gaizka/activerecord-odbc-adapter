@@ -63,7 +63,6 @@ module ODBCExt
   
   def quote_string(string)
     @logger.unknown("ODBCAdapter#quote_string>") if @trace
-    #@logger.unknown("args=[#{string}]") if @trace
     
     # MySQL requires backslashes to be escaped				
     string.gsub(/\\/, '\&\&').gsub(/'/, "''")
@@ -87,8 +86,8 @@ module ODBCExt
   
   def change_column(table_name, column_name, type, options = {})
     @logger.unknown("ODBCAdapter#change_column>") if @trace
-    options[:default] ||= select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Default"]
-    
+    # column_name.to_s used in case column_name is a symbol
+    options[:default] ||= columns(table_name).find { |c| c.name == column_name.to_s }.default    
     change_column_sql = "ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{type_to_sql(type, options[:limit])}"
     add_column_options!(change_column_sql, options)
     execute(change_column_sql)
@@ -99,7 +98,9 @@ module ODBCExt
 
   def rename_column(table_name, column_name, new_column_name)
     @logger.unknown("ODBCAdapter#rename_column>") if @trace
-    current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Type"]
+    col = columns(table_name).find{ |c| c.name == column_name.to_s }
+    current_type = col.sql_type
+    current_type << "(#{col.limit})" if col.limit
     execute "ALTER TABLE #{table_name} CHANGE #{column_name} #{new_column_name} #{current_type}"
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
@@ -108,13 +109,20 @@ module ODBCExt
   
   def change_column_default(table_name, column_name, default)
     @logger.unknown("ODBCAdapter#change_column_default>") if @trace
-    current_type = select_one("SHOW COLUMNS FROM #{table_name} LIKE '#{column_name}'")["Type"]
+    col = columns(table_name).find{ |c| c.name == column_name.to_s }
+    current_type = col.sql_type
+    current_type << "(#{col.limit})" if col.limit
     change_column(table_name, column_name, current_type, { :default => default })
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise
   end
   
+  def indexes(table_name, name = nil)
+    # Skip primary key indexes
+    super(table_name, name).delete_if { |i| i.unique && i.name =~ /^PRIMARY$/ }
+  end
+    
   def structure_dump
     @logger.unknown("ODBCAdapter#structure_dump>") if @trace
     select_all("SHOW TABLES").inject("") do |structure, table|
@@ -124,5 +132,5 @@ module ODBCExt
     @logger.unknown("exception=#{e}") if @trace
     raise
   end
-  
+          
 end

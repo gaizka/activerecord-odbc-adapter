@@ -571,7 +571,12 @@ class BasicsTest < Test::Unit::TestCase
 
   def test_default_values_on_empty_strings
     topic = Topic.new
-    topic.approved  = nil
+    #Sybase does not allow nulls in boolean columns
+    if current_adapter?(:ODBCAdapter) && ActiveRecord::Base.connection.dbmsName == :sybase
+      topic.approved  = false
+    else
+      topic.approved  = nil
+    end
     topic.last_read = nil
 
     topic.save
@@ -580,7 +585,8 @@ class BasicsTest < Test::Unit::TestCase
     assert_nil topic.last_read
 
     # Sybase adapter does not allow nulls in boolean columns
-    if current_adapter?(:SybaseAdapter)
+    if current_adapter?(:SybaseAdapter) ||
+       current_adapter?(:ODBCAdapter) && ActiveRecord::Base.connection.dbmsName == :sybase
       assert topic.approved == false
     else
       assert_nil topic.approved
@@ -935,6 +941,16 @@ class BasicsTest < Test::Unit::TestCase
     assert_equal("<baz>", inverted["quux"])
   end
 
+  def test_sql_injection_via_find
+    assert_raises(ActiveRecord::RecordNotFound) do
+      Topic.find("123456 OR id > 0")
+    end
+
+    assert_raises(ActiveRecord::RecordNotFound) do
+      Topic.find(";;; this should raise an RecordNotFound error")
+    end
+  end
+
   def test_column_name_properly_quoted
     col_record = ColumnName.new
     col_record.references = 40
@@ -968,8 +984,8 @@ class BasicsTest < Test::Unit::TestCase
   end
 
   def test_quote
-    if current_adapter?(:ODBCAdapter) && (ActiveRecord::Base.connection.dbmsName == :informix)
-      #Informix only allows printable characters in VARCHAR columns.
+    if current_adapter?(:ODBCAdapter) && [:informix, :sybase].include?(ActiveRecord::Base.connection.dbmsName)
+      #Informix and Sybase only allow printable characters in VARCHAR columns.
       author_name = "\\ \041 ' \n \\n \""
     else
       author_name = "\\ \001 ' \n \\n \""
@@ -1214,14 +1230,16 @@ class BasicsTest < Test::Unit::TestCase
     assert xml.include?(%(<parent-id></parent-id>))
     # Following databases don't have a true date type, only a composite datetime type
     if current_adapter?(:SybaseAdapter) or current_adapter?(:SQLServerAdapter) or
-         current_adapter?(:ODBCAdapter) && [:ingres,:oracle].include?(ActiveRecord::Base.connection.dbmsName)    
+         current_adapter?(:ODBCAdapter) && 
+         [:ingres,:oracle,:microsoftsqlserver].include?(ActiveRecord::Base.connection.dbmsName)    
       assert xml.include?(%(<last-read type="datetime">#{last_read_in_current_timezone}</last-read>))
     else
       assert xml.include?(%(<last-read type="date">2004-04-15</last-read>))
     end
     # Oracle and DB2 don't have a true boolean field
     unless current_adapter?(:OracleAdapter) || current_adapter?(:DB2Adapter) ||
-           current_adapter?(:ODBCAdapter) && [:ingres,:virtuoso,:oracle].include?(ActiveRecord::Base.connection.dbmsName)
+           current_adapter?(:ODBCAdapter) && 
+           [:ingres,:virtuoso,:oracle,:mysql].include?(ActiveRecord::Base.connection.dbmsName)
       assert xml.include?(%(<approved type="boolean">false</approved>)), "Approved should be a boolean"
     end
     # Oracle and DB2 don't have a true time-only field

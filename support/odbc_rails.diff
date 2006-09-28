@@ -1,19 +1,20 @@
 Index: lib/active_record/connection_adapters/abstract/schema_definitions.rb
 ===================================================================
---- lib/active_record/connection_adapters/abstract/schema_definitions.rb	(revision 4615)
+--- lib/active_record/connection_adapters/abstract/schema_definitions.rb	(revision 1)
 +++ lib/active_record/connection_adapters/abstract/schema_definitions.rb	(working copy)
-@@ -195,7 +195,7 @@
+@@ -195,7 +195,8 @@
        # Appends a primary key definition to the table definition.
        # Can be called multiple times, but this is probably not a good idea.
        def primary_key(name)
 -        column(name, native[:primary_key])
-+        column(name, :primary_key)
++       # column(name, native[:primary_key])
++       column(name, :primary_key)
        end
  
        # Returns a ColumnDefinition for the column with name +name+.
 Index: test/base_test.rb
 ===================================================================
---- test/base_test.rb	(revision 4615)
+--- test/base_test.rb	(revision 1)
 +++ test/base_test.rb	(working copy)
 @@ -44,7 +44,7 @@
  end
@@ -40,7 +41,31 @@ Index: test/base_test.rb
        assert_kind_of(
          Date, Topic.find(1).last_read, 
          "The last_read attribute should be of the Date class"
-@@ -733,7 +741,12 @@
+@@ -563,7 +571,12 @@
+ 
+   def test_default_values_on_empty_strings
+     topic = Topic.new
+-    topic.approved  = nil
++    #Sybase does not allow nulls in boolean columns
++    if current_adapter?(:ODBCAdapter) && ActiveRecord::Base.connection.dbmsName == :sybase
++      topic.approved  = false
++    else
++      topic.approved  = nil
++    end
+     topic.last_read = nil
+ 
+     topic.save
+@@ -572,7 +585,8 @@
+     assert_nil topic.last_read
+ 
+     # Sybase adapter does not allow nulls in boolean columns
+-    if current_adapter?(:SybaseAdapter)
++    if current_adapter?(:SybaseAdapter) ||
++       current_adapter?(:ODBCAdapter) && ActiveRecord::Base.connection.dbmsName == :sybase
+       assert topic.approved == false
+     else
+       assert_nil topic.approved
+@@ -733,7 +747,12 @@
  
    def test_attributes_on_dummy_time
      # Oracle and SQL Server do not have a TIME datatype.
@@ -54,13 +79,13 @@ Index: test/base_test.rb
  
      attributes = {
        "bonus_time" => "5:42:00AM"
-@@ -955,7 +968,12 @@
+@@ -965,7 +984,12 @@
    end
  
    def test_quote
 -    author_name = "\\ \001 ' \n \\n \""
-+    if current_adapter?(:ODBCAdapter) && (ActiveRecord::Base.connection.dbmsName == :informix)
-+      #Informix only allows printable characters in VARCHAR columns.
++    if current_adapter?(:ODBCAdapter) && [:informix, :sybase].include?(ActiveRecord::Base.connection.dbmsName)
++      #Informix and Sybase only allow printable characters in VARCHAR columns.
 +      author_name = "\\ \041 ' \n \\n \""
 +    else
 +      author_name = "\\ \001 ' \n \\n \""
@@ -68,14 +93,15 @@ Index: test/base_test.rb
      topic = Topic.create('author_name' => author_name)
      assert_equal author_name, Topic.find(topic.id).author_name
    end
-@@ -1194,14 +1212,20 @@
+@@ -1204,14 +1228,22 @@
      assert xml.include?(%(<content>Have a nice day</content>))
      assert xml.include?(%(<author-email-address>david@loudthinking.com</author-email-address>))
      assert xml.include?(%(<parent-id></parent-id>))
 -    if current_adapter?(:SybaseAdapter) or current_adapter?(:SQLServerAdapter)
 +    # Following databases don't have a true date type, only a composite datetime type
 +    if current_adapter?(:SybaseAdapter) or current_adapter?(:SQLServerAdapter) or
-+         current_adapter?(:ODBCAdapter) && [:ingres,:oracle].include?(ActiveRecord::Base.connection.dbmsName)    
++         current_adapter?(:ODBCAdapter) && 
++         [:ingres,:oracle,:microsoftsqlserver].include?(ActiveRecord::Base.connection.dbmsName)    
        assert xml.include?(%(<last-read type="datetime">#{last_read_in_current_timezone}</last-read>))
      else
        assert xml.include?(%(<last-read type="date">2004-04-15</last-read>))
@@ -83,7 +109,8 @@ Index: test/base_test.rb
 -    # Oracle and DB2 don't have true boolean or time-only fields
 +    # Oracle and DB2 don't have a true boolean field
 +    unless current_adapter?(:OracleAdapter) || current_adapter?(:DB2Adapter) ||
-+           current_adapter?(:ODBCAdapter) && [:ingres,:virtuoso,:oracle].include?(ActiveRecord::Base.connection.dbmsName)
++           current_adapter?(:ODBCAdapter) && 
++           [:ingres,:virtuoso,:oracle,:mysql].include?(ActiveRecord::Base.connection.dbmsName)
 +      assert xml.include?(%(<approved type="boolean">false</approved>)), "Approved should be a boolean"
 +    end
 +    # Oracle and DB2 don't have a true time-only field
@@ -92,9 +119,31 @@ Index: test/base_test.rb
        assert xml.include?(%(<bonus-time type="datetime">#{bonus_time_in_current_timezone}</bonus-time>))
      end
    end
+Index: test/fixtures/db_definitions/mysql.sql
+===================================================================
+--- test/fixtures/db_definitions/mysql.sql	(revision 1)
++++ test/fixtures/db_definitions/mysql.sql	(working copy)
+@@ -51,7 +51,7 @@
+ CREATE TABLE `projects` (
+   `id` int(11) NOT NULL auto_increment,
+   `name` varchar(100) default NULL,
+-  `type` VARCHAR(255) NOT NULL,
++  `type` VARCHAR(255) default NULL,
+   PRIMARY KEY  (`id`)
+ ) TYPE=InnoDB;
+ 
+@@ -131,7 +131,7 @@
+ ) TYPE=InnoDB;
+ 
+ CREATE TABLE `people` (
+-  `id` INTEGER NOT NULL PRIMARY KEY,
++  `id` INTEGER NOT NULL auto_increment PRIMARY KEY,
+   `first_name` VARCHAR(40) NOT NULL,
+   `lock_version` INTEGER NOT NULL DEFAULT 0
+ ) TYPE=InnoDB;
 Index: test/migration_test.rb
 ===================================================================
---- test/migration_test.rb	(revision 4615)
+--- test/migration_test.rb	(revision 1)
 +++ test/migration_test.rb	(working copy)
 @@ -46,7 +46,14 @@
      end
@@ -112,21 +161,36 @@ Index: test/migration_test.rb
        Person.connection.add_column "people", "administrator", :boolean
        Person.connection.add_column "people", "key", :string
        
-@@ -109,6 +116,11 @@
+@@ -61,7 +68,8 @@
+       assert_nothing_raised { Person.connection.remove_index("people", :name => "key") }
+ 
+       # Sybase adapter does not support indexes on :boolean columns
+-      unless current_adapter?(:SybaseAdapter)
++      unless current_adapter?(:SybaseAdapter) || 
++             current_adapter?(:ODBCAdapter) && ActiveRecord::Base.connection.dbmsName == :sybase
+         assert_nothing_raised { Person.connection.add_index("people", %w(last_name first_name administrator), :name => "named_admin") }
+         assert_nothing_raised { Person.connection.remove_index("people", :name => "named_admin") }
+       end
+@@ -109,6 +117,12 @@
          # Oracle doesn't support native booleans
          assert_equal true, two.default == 1
          assert_equal false, three.default != 0
 +      elsif current_adapter?(:ODBCAdapter) && 
-+          [:informix, :ingres, :virtuoso, :oracle].include?(ActiveRecord::Base.connection.dbmsName)
-+        # Above databases/ODBC driver doesn't support native booleans
++          [:informix, :ingres, :virtuoso, :oracle, :mysql, :microsoftsqlserver].include?(ActiveRecord::Base.connection.dbmsName)
++        # Above databases/ODBC drivers don't support native booleans.
++        # They use an integer type instead.
 +        assert_equal true, two.default == 1
 +        assert_equal false, three.default != 0        
        else
          assert_equal true, two.default
          assert_equal false, three.default
-@@ -124,10 +136,11 @@
+@@ -122,12 +136,14 @@
+     # SQL Server and Sybase will not allow you to add a NOT NULL column
+     # to a table without specifying a default value, so the
      # following test must be skipped  
-     unless current_adapter?(:SQLServerAdapter) || current_adapter?(:SybaseAdapter)
+-    unless current_adapter?(:SQLServerAdapter) || current_adapter?(:SybaseAdapter)
++    unless current_adapter?(:SQLServerAdapter) || current_adapter?(:SybaseAdapter) ||
++           current_adapter?(:ODBCAdapter) && [:microsoftsqlserver, :sybase].include?(ActiveRecord::Base.connection.dbmsName)
        def test_add_column_not_null_without_default
 +
          Person.connection.create_table :testings do |t|
@@ -138,7 +202,7 @@ Index: test/migration_test.rb
    
          assert_raises(ActiveRecord::StatementInvalid) do
            Person.connection.execute "insert into testings (foo, bar) values ('hello', NULL)"
-@@ -141,8 +154,14 @@
+@@ -141,8 +157,14 @@
        Person.connection.create_table :testings do |t|
          t.column :foo, :string
        end
@@ -155,7 +219,7 @@ Index: test/migration_test.rb
        assert_raises(ActiveRecord::StatementInvalid) do
          Person.connection.execute "insert into testings (foo, bar) values ('hello', NULL)"
        end
-@@ -174,8 +193,12 @@
+@@ -174,8 +196,12 @@
        assert_equal Fixnum, bob.age.class
        assert_equal Time, bob.birthday.class
  
@@ -170,7 +234,7 @@ Index: test/migration_test.rb
          assert_equal Time, bob.favorite_day.class
        else
          assert_equal Date, bob.favorite_day.class
-@@ -186,7 +209,7 @@
+@@ -186,7 +212,7 @@
  
      def test_add_remove_single_field_using_string_arguments
        assert !Person.column_methods_hash.include?(:last_name)
@@ -179,7 +243,7 @@ Index: test/migration_test.rb
        ActiveRecord::Migration.add_column 'people', 'last_name', :string
  
        Person.reset_column_information
-@@ -212,94 +235,129 @@
+@@ -212,94 +238,130 @@
        assert !Person.column_methods_hash.include?(:last_name)
      end
      
@@ -207,7 +271,7 @@ Index: test/migration_test.rb
 +        
 +        begin
 +          # Some DBs complain girlfriend column already exists on two consecutive add_column calls
-+          unless current_adapter?(:ODBCAdapter) && [:informix, :oracle].include?(ActiveRecord::Base.connection.dbmsName)        
++          unless current_adapter?(:ODBCAdapter) && [:informix, :oracle, :mysql, :microsoftsqlserver, :sybase].include?(ActiveRecord::Base.connection.dbmsName)        
 +            Person.connection.add_column "people", "girlfriend", :string
 +          end
 +          Person.connection.add_column "people", "girlfriend", :string, :limit => 40
@@ -366,8 +430,9 @@ Index: test/migration_test.rb
 -      assert !Person.new.administrator?
 -    end    
 -
-+    # Ingres doesn't support ALTER TABLE ADD COLUMN WITH NULL WITH DEFAULT. Skip test.
-+    unless current_adapter?(:ODBCAdapter) && [:ingres].include?(ActiveRecord::Base.connection.dbmsName)    
++    # Ingres doesn't support ALTER TABLE ADD COLUMN WITH NULL WITH DEFAULT.
++    # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
++    unless current_adapter?(:ODBCAdapter) && [:ingres, :sybase].include?(ActiveRecord::Base.connection.dbmsName)    
 +      def test_change_column_with_new_default
 +        Person.connection.add_column "people", "administrator", :boolean, :default => 1
 +        Person.reset_column_information            
@@ -382,7 +447,7 @@ Index: test/migration_test.rb
      def test_add_table
        assert !Reminder.table_exists?
        
-@@ -465,9 +523,20 @@
+@@ -465,9 +527,20 @@
        Person.connection.drop_table :binary_testings rescue nil
      
        assert_nothing_raised {
@@ -403,7 +468,7 @@ Index: test/migration_test.rb
        }
        
        columns = Person.connection.columns(:binary_testings)
-@@ -475,6 +544,8 @@
+@@ -475,6 +548,8 @@
  
        if current_adapter?(:OracleAdapter)
          assert_equal "empty_blob()", data_column.default
