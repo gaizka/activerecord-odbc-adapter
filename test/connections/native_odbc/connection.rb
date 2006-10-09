@@ -53,7 +53,7 @@ Course.establish_connection(
 ###########################################
 # Using Sybase
 
-#=begin
+=begin
 ActiveRecord::Base.establish_connection(
   :adapter  => "odbc",
   :dsn	    => "a609_syb15_trilby_testdb3",
@@ -69,6 +69,27 @@ Course.establish_connection(
   :trace => true,
   :convert_numeric_literals => true
 )
-#=end
+=end
 
+###########################################
+# Using DB2
 
+=begin
+ActiveRecord::Base.establish_connection(
+  :adapter  => "odbc",
+  :dsn	    => "a609_db2_alice_rails1",
+  :username => "db2admin",
+  :password => "db2admin",
+  :trace => true,
+  :convert_numeric_literals => true
+)
+
+Course.establish_connection(
+  :adapter  => "odbc",
+  :dsn	    => "a609_db2_alice_rails2",
+  :username => "db2admin",
+  :password => "db2admin",
+  :trace => true,
+  :convert_numeric_literals => true
+)
+=end

@@ -2,7 +2,7 @@
 
 (C) 2006 OpenLink Software
 
-27-September-06
+05-October-2006
 
 
 == Status
@@ -19,11 +19,9 @@ its own adapter.
 The adapter is a work in progress.
 
 It currently supports Ingres r3, Informix 9.3 or later, Oracle 10g,
-MySQL 5.x, Sybase ASE 15, SQL Server 2000 and OpenLink's Virtuoso
-(Open&nbsp;Source&nbsp;Edition[http://virtuoso.openlinksw.com]).
-
-It has also been partially tested against SQL Server 2005 and MySQL
-5.0, although support for these databases is not complete at present.
+MySQL 5 and OpenLink's Virtuoso
+(Open&nbsp;Source&nbsp;Edition[http://virtuoso.openlinksw.com]), 
+SQL Server 2000, Sybase ASE 15 and DB2 v9.
 
 Testing to date has been limited to the ROR 'Expenses' sample
 application described at http://developer.apple.com/tools/rubyonrails.html

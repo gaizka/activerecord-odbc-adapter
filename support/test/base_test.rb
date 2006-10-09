@@ -1236,10 +1236,10 @@ class BasicsTest < Test::Unit::TestCase
     else
       assert xml.include?(%(<last-read type="date">2004-04-15</last-read>))
     end
-    # Oracle and DB2 don't have a true boolean field
+    # Following databases don't have a true boolean type
     unless current_adapter?(:OracleAdapter) || current_adapter?(:DB2Adapter) ||
            current_adapter?(:ODBCAdapter) && 
-           [:ingres,:virtuoso,:oracle,:mysql].include?(ActiveRecord::Base.connection.dbmsName)
+           [:ingres,:virtuoso,:oracle,:mysql,:db2].include?(ActiveRecord::Base.connection.dbmsName)
       assert xml.include?(%(<approved type="boolean">false</approved>)), "Approved should be a boolean"
     end
     # Oracle and DB2 don't have a true time-only field
