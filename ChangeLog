@@ -1,0 +1,32 @@
+2006-10-09 07:25  source
+
+	* Added support for DB2 (cmb)
+
+2006-10-09 07:23  source
+
+	* Renamed sybase_odbc.sql to sybase.sql (cmb)
+
+2006-09-28 10:31  source
+
+	* Added support for MySQL, Sybase and SQL Server (cb)
+
+2006-08-23 14:07  source
+
+	* Final documentation patches
+
+2006-08-22 20:26  source
+
+	Initial checkin
+
+2006-08-21 23:37  source
+
+	Initial checkin
+
+2006-08-21 12:57  source
+
+	Initial checkin
+
+2006-08-17 16:54  source
+
+	Initial checkin
+
