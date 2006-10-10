@@ -1,2 +1,5 @@
+October 10, 2006, V1.0-pre1:
+  * Added support for DB2, MySQL, Sybase and SQL Server
+
 August 23 2006, V1.0:
   * Initial archive

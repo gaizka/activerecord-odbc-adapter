@@ -1,3 +1,19 @@
+2006-10-10 14:13  source
+
+	* Less files to ignore
+
+2006-10-10 14:13  source
+
+	* Removed comment from notes about unicode support
+
+2006-10-10 10:57  source
+
+	* Reindented code (cmb)
+
+2006-10-09 09:03  source
+
+	* Latest diff for rails code (cmb)
+
 2006-10-09 07:25  source
 
 	* Added support for DB2 (cmb)
@@ -19,6 +35,10 @@
 	Initial checkin
 
 2006-08-21 23:37  source
+
+	Initial checkin
+
+2006-08-21 14:00  source
 
 	Initial checkin
 
