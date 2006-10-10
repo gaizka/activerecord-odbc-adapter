@@ -75,8 +75,6 @@ begin
       # * Virtuoso, MySQL
       #
       # === Note
-      # * If using an OpenLink ODBC driver, use only OpenLink's _ANSI_ drivers.
-      #   OpenLink's _Unicode_ ODBC drivers are not supported.
       # * OpenLink ODBC drivers work with v0.998 or later of the Ruby ODBC bridge.
       # * The native MySQL driver requires v0.9991 of the Ruby ODBC bridge.
       #
