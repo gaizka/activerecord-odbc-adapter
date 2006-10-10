@@ -1,13 +1,6 @@
 Makefile
 Makefile.in
-aclocal.m4
-autogen.log
-autom4te.cache
-config.log
-config.status
-configure
 *.gz
 *.zip
-.comment
 doc
 distrib
