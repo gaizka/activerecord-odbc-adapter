@@ -1668,6 +1668,9 @@ begin
             
           when ODBC::SQL_CHAR, ODBC::SQL_VARCHAR then :string
           when ODBC::SQL_LONGVARCHAR then :text
+
+          when ODBC::SQL_WCHAR, ODBC::SQL_WVARCHAR then :string
+          when ODBC::SQL_WLONGVARCHAR then :text
             
           when ODBC::SQL_TINYINT, ODBC::SQL_SMALLINT, ODBC::SQL_INTEGER, 
             ODBC::SQL_BIGINT then :integer
