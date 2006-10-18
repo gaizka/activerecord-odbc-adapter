@@ -1,5 +1,6 @@
-October 10, 2006, V1.0-pre1:
+October 18, 2006, V1.1:
   * Added support for DB2, MySQL, Sybase and SQL Server
+  * Fixed initial unicode support
 
 August 23 2006, V1.0:
   * Initial archive
