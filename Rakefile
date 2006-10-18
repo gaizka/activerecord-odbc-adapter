@@ -29,12 +29,13 @@ require 'rake/clean'
 require 'rake/packagetask'
 require 'rake/rdoctask'
 
+
 #
 #  Package meta information
 #
 PKG_BUILD     = ENV['PKG_BUILD'] ? '.' + ENV['PKG_BUILD'] : ''
 PKG_NAME      = 'rails-odbc'
-PKG_VERSION   = '1.1-rc1'
+PKG_VERSION   = '1.1'
 PKG_FILE_NAME = "#{PKG_NAME}-#{PKG_VERSION}"
 
 
@@ -97,6 +98,7 @@ Rake::PackageTask.new(PKG_NAME, PKG_VERSION) do |p|
     p.package_dir = 'distrib'
     p.package_files.include(PKG_FILES)
 end
+
 
 #
 #  Cleanup
