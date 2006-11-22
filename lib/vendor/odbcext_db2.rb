@@ -84,7 +84,4 @@ module ODBCExt
     super(table_name, name).delete_if { |i| i.unique && i.name =~ /^sql\d+$/ }
   end
   
-  def structure_dump #:nodoc:
-    raise NotImplementedError, "structure_dump is not implemented"
-  end      
 end # module

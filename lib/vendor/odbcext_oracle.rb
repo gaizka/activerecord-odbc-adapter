@@ -75,10 +75,10 @@ module ODBCExt
     # sequence, but not all ODBC drivers support them.
     case value
     when Time, DateTime
-      #%Q!{ts #{value.strftime("%Y-%m-%d %H:%M:%S")}}!
+      #%Q!{ts '#{value.strftime("%Y-%m-%d %H:%M:%S")}'}!
       "to_timestamp(\'#{value.strftime("%Y-%m-%d %H:%M:%S")}\', \'YYYY-MM-DD HH24:MI:SS\')"
     when Date
-      #%Q!{d #{value.strftime("%Y-%m-%d")}}!
+      #%Q!{d '#{value.strftime("%Y-%m-%d")}'}!
       "to_timestamp(\'#{value.strftime("%Y-%m-%d")}\', \'YYYY-MM-DD\')"
     end
   end
