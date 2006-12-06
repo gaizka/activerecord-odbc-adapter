@@ -96,6 +96,7 @@ spec = Gem::Specification.new do |s|
   s.email = PKG_AUTHOR_EMAIL
   s.homepage = PKG_HOMEPAGE
   s.platform = Gem::Platform::RUBY
+  s.add_dependency('activerecord', '>= 1.11')
   s.summary = PKG_SUMMARY
   s.files = FileList["{lib,test,support}/**/*", "AUTHORS", "ChangeLog", "COPYING", "LICENSE", "NEWS", "README"].to_a
   s.require_path = "lib"
