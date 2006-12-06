@@ -151,7 +151,7 @@ end
 
 puts "\nCopying ODBC Adapter files into the ActiveRecord tree."
 puts "-"*60
-Dir.chdir("lib")
+Dir.chdir("lib/active_record")
 Find.find(".") { |f|
   if f[-3..-1] == ".rb"
     dest = File.join($activeRecDir, *f.split(/\//))		

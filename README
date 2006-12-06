@@ -2,14 +2,13 @@
 
 (C) 2006 OpenLink Software
 
-05-October-2006
+22-November-2006
 
 
 == Status
 
-The adapter accompanying this note is a pre-release of a Generic
-ODBC Adapter for Ruby on Rails being developed by
-<B>OpenLink&nbsp;Software</B>[http://www.openlinksw.com].
+The adapter accompanying this note is a Generic ODBC Adapter for Ruby on Rails
+being developed by <B>OpenLink&nbsp;Software</B>[http://www.openlinksw.com].
 
 The aim of this development is to provide a single ODBC-based adapter
 capable of supporting the most popular DBMSes, in contrast to the
@@ -21,7 +20,7 @@ The adapter is a work in progress.
 It currently supports Ingres r3, Informix 9.3 or later, Oracle 10g,
 MySQL 5 and OpenLink's Virtuoso
 (Open&nbsp;Source&nbsp;Edition[http://virtuoso.openlinksw.com]), 
-SQL Server 2000, Sybase ASE 15 and DB2 v9.
+SQL Server 2000, Sybase ASE 15, DB2 v9 and Progress v8/9/10
 
 Testing to date has been limited to the ROR 'Expenses' sample
 application described at http://developer.apple.com/tools/rubyonrails.html
@@ -87,11 +86,66 @@ the tests similarly to cope with limitations of other Rails-supported
 databases. modified_files/ contains the patched versions of the
 files touched by the diff file.
 
+== Installation as a Gem
 
-== Installation
+* Install the odbc-rails gem.
 
-The OpenLink ODBC adapter for Ruby on Rails can be installed in
-various ways.
+    # gem install -r odbc-rails
+
+* Add the ODBC adapter to the list of adapters recognized by ActiveRecord.
+
+  1. Edit ACTIVE_RECORD_ROOT/lib/active_record.rb
+      (where, on Windows, ACTIVE_RECORD_ROOT will be something like
+      c:\ruby\lib\ruby\gems\1.8\gems\activerecord-x.x.x)
+
+  2. Edit the line:
+
+        RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql sqlite firebird sqlserver db2 oracle sybase openbase)
+
+     to include odbc as an adapter, i.e.
+
+        RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql ... openbase odbc)
+
+
+== Installation as a Plugin
+
+The OpenLink ODBC Data Adapter can be installed as a plugin by navigating to
+the root of your Rails application and typing:
+    script/plugin install odbc-rails
+or
+    script/plugin install http://odbc-rails.rubyforge.org/plugins/odbc-rails
+On Windows, replace <tt>script/plugin</tt> by <tt>ruby script/plugin</tt>.
+e.g. <tt>ruby script/plugin install odbc-rails</tt>
+
+
+=== Manual Plugin Installation
+
+You can also install the plugin manually by unpacking the sources into the
+vendor/plugins directory of your Rails application. If you use this method,
+you must run install.rb immediately afterwards. This need only be done once.
+
+install.rb modifies your application's config/environment.rb file, adding a
+line to ensure that the database adapter plugin is initialized before
+ActiveRecord. i.e.
+
+    require File.join(File.dirname(__FILE__), 'boot')
+
+    # Added by OpenLink ODBC Adapter (odbc-rails) plugin
+    Rails::Initializer.run(:load_plugins)
+
+    Rails::Initializer.run do |config|
+
+Without this change, Rails attempts to initialize ActiveRecord before it loads 
+any plugins, causing an AdapterNotFound error. install.rb saves a copy of 
+environment.rb before making any changes.
+
+== Installation into your Rails Core
+
+Installing the adapter as a plugin makes it available to a particular Rails
+application. If you would prefer to make the adapter accessible to all your
+Rails applications, you can instead install it centrally in your Rails 'core'
+by incorporating the adapter files into your ActiveRecord source tree. This 
+can be done in various ways.
 
 When using <tt>rake install</tt> or running the install_odbc.rb
 script by hand, the script tries to determine the location of the
@@ -134,7 +188,7 @@ The Rakefile also defines some targets specifically for developers:
 === Running installation script
 
 The second way of installing the adapter is running the
-<tt>install_odbc.rb</tt> script as root .
+<tt>install_odbc.rb</tt> script as root.
 
     # ruby install_odbc.rb
 
