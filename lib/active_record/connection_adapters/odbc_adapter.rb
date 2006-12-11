@@ -57,7 +57,7 @@ begin
       # The ODBC adapter requires the Ruby ODBC module (version 0.9991 or 
       # later), available from http://raa.ruby-lang.org/project/ruby-odbc
       #
-      # == Status at 22-Nov-2006
+      # == Status at 11-Dec-2006
       #
       # The current adapter supports Ingres r3, Informix 9.3 or later, 
       # Virtuoso (Open-Source Edition) 4.5, Oracle 10g, MySQL 5, 

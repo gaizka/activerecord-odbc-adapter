@@ -2,7 +2,7 @@
 
 (C) 2006 OpenLink Software
 
-22-November-2006
+11-December-2006
 
 
 == Status
@@ -14,8 +14,6 @@ The aim of this development is to provide a single ODBC-based adapter
 capable of supporting the most popular DBMSes, in contrast to the
 current approach in the Rails community of each database requiring
 its own adapter.
-
-The adapter is a work in progress.
 
 It currently supports Ingres r3, Informix 9.3 or later, Oracle 10g,
 MySQL 5 and OpenLink's Virtuoso
@@ -83,42 +81,55 @@ The patches to base_test.rb and migration_test.rb are not essential.
 However, they modify or bypass certain tests to cope with limitations
 of particular databases. Other developers have previously modified
 the tests similarly to cope with limitations of other Rails-supported
-databases. modified_files/ contains the patched versions of the
-files touched by the diff file.
+databases. The patched versions of files touched by odbc_rails.diff can be 
+found in support/lib and support/test.
 
-== Installation as a Gem
+== Installation
 
-* Install the odbc-rails gem.
+There are 3 ways to install the ODBC Adapter package: either as a gem
+(recommended), a plugin, or by running the custom installation script. Pick
+one of the following, depending on whether you want the adapter to be
+available system-wide or just within a particular Rails project.
 
-    # gem install -r odbc-rails
+=== Installation as a Gem
 
-* Add the ODBC adapter to the list of adapters recognized by ActiveRecord.
+Install the odbc-rails gem by running:
 
-  1. Edit ACTIVE_RECORD_ROOT/lib/active_record.rb
-      (where, on Windows, ACTIVE_RECORD_ROOT will be something like
-      c:\ruby\lib\ruby\gems\1.8\gems\activerecord-x.x.x)
+    # gem install -r odbc-rails --include-dependencies
 
-  2. Edit the line:
+Enable loading of the adapter by editing your Rails project's
+config/environment.rb script: 
 
-        RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql sqlite firebird sqlserver db2 oracle sybase openbase)
+   * Add a <tt>require</tt> to your config/environment.rb immediately after
+     the line
 
-     to include odbc as an adapter, i.e.
+       require File.join(File.dirname(__FILE__), 'boot')
 
-        RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql ... openbase odbc)
+     i.e.
+
+       require File.join(File.dirname(__FILE__), 'boot')
+       require 'odbc_adapter'
 
 
-== Installation as a Plugin
+=== Installation as a Plugin
 
-The OpenLink ODBC Data Adapter can be installed as a plugin by navigating to
-the root of your Rails application and typing:
+Installing the OpenLink ODBC Data Adapter as a plugin makes it available to
+a particular Rails application only.
+
+==== Automatic Plugin installation
+
+The adapter can be automatically installed as a plugin by navigating to the
+root of your Rails application and typing either:
+
     script/plugin install odbc-rails
 or
     script/plugin install http://odbc-rails.rubyforge.org/plugins/odbc-rails
+
 On Windows, replace <tt>script/plugin</tt> by <tt>ruby script/plugin</tt>.
 e.g. <tt>ruby script/plugin install odbc-rails</tt>
 
 
-=== Manual Plugin Installation
+==== Manual Plugin Installation
 
 You can also install the plugin manually by unpacking the sources into the
 vendor/plugins directory of your Rails application. If you use this method,
@@ -139,32 +150,25 @@ Without this change, Rails attempts to initialize ActiveRecord before it loads
 any plugins, causing an AdapterNotFound error. install.rb saves a copy of 
 environment.rb before making any changes.
 
-== Installation into your Rails Core
+=== Custom installation script
 
-Installing the adapter as a plugin makes it available to a particular Rails
-application. If you would prefer to make the adapter accessible to all your
-Rails applications, you can instead install it centrally in your Rails 'core'
-by incorporating the adapter files into your ActiveRecord source tree. This 
-can be done in various ways.
+When using <tt>rake install</tt> or running the install_odbc.rb script by
+hand, the script tries to determine the location of the activerecord
+package within your Ruby installation and allows you to overrule the
+directory it has found with a directory of your choice. If more than one
+version of activerecord is found, the default will be the latest version.
 
-When using <tt>rake install</tt> or running the install_odbc.rb
-script by hand, the script tries to determine the location of the
-activerecord package within your Ruby installation and allows you
-to overrule the directory it has found with a directory of your
-choice. If more than one version of activerecord is found, the
-default will be the latest version.
+On Mac OS X the installation script is also capable of locating Locomotive,
+if installed, and will ask to install in there.
 
-On Mac OS X the installation script is also capable of locating
-Locomotive and will ask to install in there.
+The install_odbc.rb script also verifies that the pre-requisites are
+installed.
 
-The install_odbc.rb script also verifies that the pre-requisites
-are installed.
-
-If all else fails this document also describes the steps to install
-the ODBC adapter into activerecord manually.
+If all else fails this document also describes the steps to install the
+ODBC adapter into activerecord manually.
 
 
-=== Using rake
+==== Using rake
 
 The simplest way to install the adapter is by using the following
 command as root:
@@ -185,7 +189,7 @@ The Rakefile also defines some targets specifically for developers:
     $ rake clean	# Remove generated files and directories
 
 
-=== Running installation script
+==== Running installation script
 
 The second way of installing the adapter is running the
 <tt>install_odbc.rb</tt> script as root.
@@ -199,27 +203,51 @@ or if your system supports sudo:
 
 === Installing files manually
 
-The third way of installing the adapter is by performing the
-installation steps yourself.
-
-* Add the ODBC adapter to the list of adapters recognized by ActiveRecord.
-
-  1. Edit ACTIVE_RECORD_ROOT/lib/active_record.rb
-      (where, on Windows, ACTIVE_RECORD_ROOT will be something like
-      c:\ruby\lib\ruby\gems\1.8\gems\activerecord-x.x.x)
-
-  2. Edit the line:
-
-        RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql sqlite firebird sqlserver db2 oracle sybase openbase)
-
-     to include odbc as an adapter, i.e.
-
-        RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql ... openbase odbc)
+The third way of installing the adapter is by performing the installation
+steps yourself.
 
 * Copy odbc_adapter.rb to the ACTIVE_RECORD_ROOT/lib/active_record/connection_adapters/ directory
 
 * Copy the odbcext_*.rb files to the ACTIVE_RECORD_ROOT/lib/active_record/vendor/ directory
 
+* Enable loading of the adapter (see below)
+
+
+== Enabling Loading of the Adapter
+
+This step is only necessary if the adapter was installed either as a gem or
+by copying files into your Rails core manually. It is not required if the
+adapter was installed as a plugin, using <tt>rake install</tt> or using
+install_odbc.rb.
+
+There are two ways to enable loading of the adapter:
+
+1. Modify active_record.rb in your Rails 'core', adding the ODBC adapter to
+   the list of adapters recognized by ActiveRecord:
+
+   * Edit ACTIVE_RECORD_ROOT/lib/active_record.rb, appending `odbc' to the line:
+
+       RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql sqlite firebird sqlserver db2 oracle sybase openbase)
+
+     i.e.
+
+       RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql ... openbase odbc)
+
+     *or*
+
+2. Modify your Rails application's configuration to <tt>require</tt> the
+   adapter:
+
+
+   * Add a <tt>require</tt> to your config/environment.rb immediately after
+     the line
+
+       require File.join(File.dirname(__FILE__), 'boot')
+
+     i.e.
+
+       require File.join(File.dirname(__FILE__), 'boot')
+       require 'odbc_adapter'
 
 == Configuring the Adapter
 
@@ -236,7 +264,7 @@ logger output file as illustrated in connection.rb, e.g.
 == License
 
 The OpenLink ODBC Adapter for Ruby on Rails is released under the
-MIT license (see the file COPYING).
+MIT license as detailed in the file COPYING.
 
 
 === Submitting fixes and enhancements
