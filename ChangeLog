@@ -1,18 +1,47 @@
+2006-12-11 12:01  source
+
+	* Updated for final release 1.2
+
+2006-12-11 12:00  source
+
+	* Added additional documentation for installing gem and plugin version
+
+2006-12-06 16:16  source
+
+	* Added for gem support
+
+2006-12-06 16:14  source
+
+	* Added dependency to activerecord
+
+2006-12-06 15:01  source
+
+	* Fixed version number
+
+2006-12-06 15:01  source
+
+	* Changed doc into rdoc
+
+2006-12-06 14:55  source
+
+	* Added support for building plugin
+	* Added support for building gem
+
+2006-12-06 14:42  source
+
+	* Changed directory structure for building both plugin and gem
+
+2006-11-22 15:53  source
+
+	* Added support for Progress versions 8 (SQL89 engine), 9 & 10 (SQL92 engine)
+
 2006-10-18 14:32  source
 
 	* Updated package version to 1.1
 
-2006-10-18 12:35  source
-
-	* Added unicode types (th)
-
 2006-10-10 14:13  source
 
 	* Less files to ignore
-
-2006-10-10 14:13  source
-
-	* Removed comment from notes about unicode support
 
 2006-10-10 10:57  source
 
