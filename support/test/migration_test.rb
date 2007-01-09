@@ -247,7 +247,7 @@ if ActiveRecord::Base.connection.supports_migrations?
         
         begin
           # Some DBs complain girlfriend column already exists on two consecutive add_column calls
-          unless current_adapter?(:ODBCAdapter) && [:informix, :oracle, :mysql, :microsoftsqlserver, :sybase].include?(ActiveRecord::Base.connection.dbmsName)        
+          unless current_adapter?(:ODBCAdapter) && [:informix, :oracle, :mysql, :microsoftsqlserver, :sybase, :postgresql].include?(ActiveRecord::Base.connection.dbmsName)        
             Person.connection.add_column "people", "girlfriend", :string
           end
           Person.connection.add_column "people", "girlfriend", :string, :limit => 40

@@ -2,7 +2,7 @@
 
 (C) 2006 OpenLink Software
 
-11-December-2006
+09-Jan-2007
 
 
 == Status
@@ -18,7 +18,7 @@ its own adapter.
 It currently supports Ingres r3, Informix 9.3 or later, Oracle 10g,
 MySQL 5 and OpenLink's Virtuoso
 (Open&nbsp;Source&nbsp;Edition[http://virtuoso.openlinksw.com]), 
-SQL Server 2000, Sybase ASE 15, DB2 v9 and Progress v8/9/10
+SQL Server 2000, Sybase ASE 15, DB2 v9, Progress v8/9/10 and PostgreSQL 8.2.
 
 Testing to date has been limited to the ROR 'Expenses' sample
 application described at http://developer.apple.com/tools/rubyonrails.html
@@ -100,12 +100,11 @@ Install the odbc-rails gem by running:
 Enable loading of the adapter by editing your Rails project's
 config/environment.rb script: 
 
-   * Add a <tt>require</tt> to your config/environment.rb immediately after
-     the line
+* Add a +require+ to your config/environment.rb immediately after the line
 
        require File.join(File.dirname(__FILE__), 'boot')
 
-     i.e.
+  i.e.
 
        require File.join(File.dirname(__FILE__), 'boot')
        require 'odbc_adapter'

@@ -57,12 +57,12 @@ begin
       # The ODBC adapter requires the Ruby ODBC module (version 0.9991 or 
       # later), available from http://raa.ruby-lang.org/project/ruby-odbc
       #
-      # == Status at 11-Dec-2006
+      # == Status at 09-Jan-2007
       #
       # The current adapter supports Ingres r3, Informix 9.3 or later, 
       # Virtuoso (Open-Source Edition) 4.5, Oracle 10g, MySQL 5, 
-      # SQL Server 2000, Sybase ASE 15, DB2 v9, Progress 9/10 (SQL-92 engine)
-      # and Progress 8 (SQL-89 engine).
+      # SQL Server 2000, Sybase ASE 15, DB2 v9, Progress 9/10 (SQL-92 engine),
+      # Progress 8 (SQL-89 engine) and PostgreSQL 8.2
       #
       # == Testing Environments
       #
@@ -71,7 +71,8 @@ begin
       # The iODBC Driver Manager was used on Linux and Mac OS X.
       #
       # Databases supported using OpenLink ODBC drivers:
-      # * Informix, Ingres, Oracle, MySQL, SQL Server, Sybase, DB2, Progress
+      # * Informix, Ingres, Oracle, MySQL, SQL Server, Sybase, DB2, Progress,
+      #   PostgreSQL
       # Databases supported using the database's own native ODBC driver:
       # * Virtuoso, MySQL, Informix
       #
@@ -85,7 +86,6 @@ begin
       # More information can be found at:
       # * http://rubyforge.org/projects/odbc-rails/
       # * http://odbc-rails.openlinksw.com 
-      # * http://virtuoso.openlinksw.com/wiki/main/OdbcRails/RailsAdapterWeb
       # * http://sourceforge.net/projects/virtuoso/
       #
       # Maintainer: Carl Blakeley (mailto:cblakeley@openlinksw.co.uk)
@@ -250,6 +250,15 @@ begin
                 :has_autoincrement_col => false,
                 :supports_migrations => true,
                 :supports_schema_names => true,
+                :supports_count_distinct => true
+              }
+            },
+            :postgresql => {
+              :any_version => {
+                :primary_key => "serial primary key",
+                :has_autoincrement_col => true,
+                :supports_migrations => true,
+                :supports_schema_names => false,
                 :supports_count_distinct => true
               }
             },
@@ -497,8 +506,8 @@ begin
           @logger.unknown("args=[#{value}]") if @@trace
           case value
           when String
-            if column && column.type == :binary && column.class.respond_to?(:string_to_binary)
-              "'#{quote_string(column.class.string_to_binary(value))}'"
+            if column && column.type == :binary && self.respond_to?(:string_to_binary)
+              "'#{string_to_binary(value)}'"
             elsif (column && [:integer, :float].include?(column.type)) ||
              (column.nil? && @convert_numeric_literals && 
              (value =~ /^[-+]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?$/))
@@ -864,9 +873,9 @@ begin
         # Returns the default sequence name for a table.
         # Used for databases which don't support an autoincrementing column 
         # type, but do support sequences.
-        def default_sequence_name(table, primary_key=nil)
+        def default_sequence_name(table, column)
           @logger.unknown("ODBCAdapter#default_sequence_name>") if @@trace
-          @logger.unknown("args=[#{table}|#{primary_key}]") if @@trace
+          @logger.unknown("args=[#{table}|#{column}]") if @@trace
         "#{table}_seq"
         end
         
@@ -915,11 +924,15 @@ begin
           currentUser = @dsInfo.info[ODBC::SQL_USER_NAME]
           stmt = @connection.tables
           resultSet = stmt.fetch_all || []
-          resultSet.each do |row| 
+          resultSet.each do |row|
+            schemaName = row[1]
+            tblName = row[2]
+            tblType = row[3]
+            next if respond_to?("table_filter") && table_filter(schemaName, tblName, tblType)
             if @@dbmsLookups.get_info(@dbmsName, @dbmsMajorVer, :supports_schema_names)
-              tblNames << activeRecIdentCase(row[2]) if row[1].casecmp(currentUser) == 0
+              tblNames << activeRecIdentCase(tblName) if schemaName.casecmp(currentUser) == 0
             else
-              tblNames << activeRecIdentCase(row[2])
+              tblNames << activeRecIdentCase(tblName)
             end
           end
           stmt.drop
@@ -966,8 +979,9 @@ begin
             elsif colDefault =~ /^\((.*)\)$/ # SQL Server numeric default
               colDefault = $1
               # ODBC drivers should return string column defaults in quotes
-              # Oracle also includes a trailing space.
-            elsif colDefault =~ /^'(.*)' *$/
+              # - Oracle includes a trailing space.
+              # - PostgreSQL may return '<default>::character varying'
+            elsif colDefault =~ /^'(.*)'[ :].*$/
               colDefault = $1
 	        #TODO: HACKS for Progress
             elsif @dbmsName == :progress || @dbmsName == :progress89

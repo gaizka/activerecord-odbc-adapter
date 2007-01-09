@@ -985,7 +985,7 @@ class BasicsTest < Test::Unit::TestCase
 
   def test_quote
     if current_adapter?(:ODBCAdapter) && [:informix, :sybase].include?(ActiveRecord::Base.connection.dbmsName)
-      #Informix and Sybase only allow printable characters in VARCHAR columns.
+      #Some databases only allow printable characters in VARCHAR columns.
       author_name = "\\ \041 ' \n \\n \""
     else
       author_name = "\\ \001 ' \n \\n \""
