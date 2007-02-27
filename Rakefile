@@ -2,7 +2,7 @@
 #  $Id$
 #
 #  OpenLink ODBC Adapter for Ruby on Rails
-#  Copyright (C) 2006 OpenLink Software
+#  Copyright (C) 2007 OpenLink Software
 #
 #  Permission is hereby granted, free of charge, to any person obtaining
 #  a copy of this software and associated documentation files (the
