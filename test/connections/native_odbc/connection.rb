@@ -28,68 +28,87 @@ print "Using native ODBC\n"
 require_dependency 'fixtures/course'
 require 'logger'
 
-#ActiveRecord::Base.logger = Logger.new(STDOUT)
-#ActiveRecord::Base.logger = Logger.new("debug_odbc.log")
+RAILS_DEFAULT_LOGGER = Logger.new("debug_odbc.log")
 #Logger level default is the lowest available, Logger::DEBUG
-#ActiveRecord::Base.logger.level = Logger::WARN
-ActiveRecord::Base.colorize_logging = false
+#RAILS_DEFAULT_LOGGER.level = Logger::WARN
+RAILS_DEFAULT_LOGGER.colorize_logging = false
+ActiveRecord::Base.logger = RAILS_DEFAULT_LOGGER
 
-ActiveRecord::Base.establish_connection(
-  :adapter  => "odbc",
-  :dsn	    => "a604-ora10-alice-testdb1",
-  :username => "oracle",
-  :password => "oracle",
-  :trace => true
-)
+ActiveRecord::Base.configurations = {
+  'arunit' => {
+    :adapter  => "odbc",
+    :dsn      => "a609_ora10_alice_test1",
+    :username => "scott",
+    :password => "tiger",
+    :emulate_booleans => true,
+    :trace    => false
+  },
+ 'arunit2' => {
+    :adapter  => "odbc",
+    :dsn      => "a609_ora10_alice_test1",
+    :username => "scott",
+    :password => "tiger",
+    :emulate_booleans => true,
+    :trace    => false
+  }
+}
 
-Course.establish_connection(
-  :adapter  => "odbc",
-  :dsn	    => "a604-ora10-alice-testdb2",
-  :username => "oracle",
-  :password => "oracle",
-  :trace => true
-)
-
-###########################################
-# Using Sybase
-
-=begin
-ActiveRecord::Base.establish_connection(
-  :adapter  => "odbc",
-  :dsn	    => "a609_syb15_trilby_testdb3",
-  :username => "sa",
-  :trace => true,
-  :convert_numeric_literals => true
-)
-
-Course.establish_connection(
-  :adapter  => "odbc",
-  :dsn	    => "a609_syb15_trilby_testdb4",
-  :username => "sa",
-  :trace => true,
-  :convert_numeric_literals => true
-)
-=end
+ActiveRecord::Base.establish_connection 'arunit'
+Course.establish_connection 'arunit2'
 
 ###########################################
 # Using DB2
 
 =begin
-ActiveRecord::Base.establish_connection(
+ActiveRecord::Base.configurations = {
+  'arunit' => {
   :adapter  => "odbc",
-  :dsn	    => "a609_db2_alice_rails1",
+  :dsn	    => "a610_db2_alice_rails1",
   :username => "db2admin",
   :password => "db2admin",
-  :trace => true,
+  :trace    => true,
   :convert_numeric_literals => true
-)
+  },
+ 'arunit2' => {
+    :adapter  => "odbc",
+    :dsn      => "a610_db2_alice_rails2",
+    :username => "db2admin",
+    :password => "db2admin",
+    :trace    => true,
+    :convert_numeric_literals => true
+  }
+}
 
-Course.establish_connection(
+ActiveRecord::Base.establish_connection 'arunit'
+Course.establish_connection 'arunit2'
+=end
+
+###########################################
+# Using Sybase 15
+
+=begin
+ActiveRecord::Base.configurations = {
+  'arunit' => {
   :adapter  => "odbc",
-  :dsn	    => "a609_db2_alice_rails2",
-  :username => "db2admin",
-  :password => "db2admin",
+  :dsn	    => "a609_syb15_trilby_testdb3",
+  :username => "sa",
+#  :password => "",
   :trace => true,
   :convert_numeric_literals => true
-)
+  },
+ 'arunit2' => {
+  :adapter  => "odbc",
+  :dsn	    => "a609_syb15_trilby_testdb4",
+  :username => "sa",
+#  :password => "",
+  :trace => true,
+  :convert_numeric_literals => true
+  }
+}
+
+ActiveRecord::Base.establish_connection 'arunit'
+Course.establish_connection 'arunit2'
 =end
+
+###########################################
+puts "Using DSN: #{ActiveRecord::Base.configurations["arunit"][:dsn]}"

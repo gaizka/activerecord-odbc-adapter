@@ -37,7 +37,7 @@ create table topics (
     bonus_time timestamp default null,
     last_read timestamp default null,
     content varchar(4000),
-    approved number(10) default 1,
+    approved number(1) default 1,
     replies_count number(10) default 0,
     parent_id number(10) references topics initially deferred disable,
     type varchar(50) default null,
@@ -114,6 +114,23 @@ create table booleantests (
     primary key (id)
 );
 create sequence booleantests_seq minvalue 10000;
+
+create table defaults (
+    id number(10) not null,
+    modified_date date default sysdate,
+    modified_date_function date default sysdate,
+    fixed_date date default to_date('2004-01-01', 'YYYY-MM-DD'),
+    modified_time date default sysdate,
+    modified_time_function date default sysdate,
+    fixed_time date default TO_DATE('2004-01-01 00:00:00', 'YYYY-MM-DD HH24:MI:SS'),
+    char1 varchar2(1) default 'Y',
+    char2 varchar2(50) default 'a varchar field',
+    char3 clob default 'a text field',
+    positive_integer number(10) default 1,
+    negative_integer number(10) default -1,
+    decimal_number number(3,2) default 2.78
+);
+create sequence defaults_seq minvalue 10000;
 
 create table auto_id_tests (
     auto_id number(10) not null,
@@ -255,3 +272,14 @@ create table legacy_things (
     version number(10) default 0
 );
 create sequence legacy_things_seq minvalue 10000;
+
+create table numeric_data (
+  id number(10) not null primary key,
+  bank_balance decimal(10,2),
+  big_bank_balance decimal(15,2),
+  world_population decimal(10),
+  my_house_population decimal(2),
+  decimal_number_with_default decimal(3,2) default 2.78
+);
+create sequence numeric_data_seq minvalue 10000;
+

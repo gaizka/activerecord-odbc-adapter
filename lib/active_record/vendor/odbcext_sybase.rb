@@ -103,12 +103,12 @@ module ODBCExt
   
   def change_column(table_name, column_name, type, options = {})
     @logger.unknown("ODBCAdapter#change_column>") if @trace
-    if options[:default]
+    if options.include?(:default)
       # Sybase ASE's ALTER TABLE statement doesn't allow a column's DEFAULT to be changed.
       raise ActiveRecord::ActiveRecordError, 
         "Sybase ASE does not support changing a column's DEFAULT definition"
     end
-    execute "ALTER TABLE #{table_name} MODIFY #{column_name} #{type_to_sql(type, options[:limit])}"
+    execute "ALTER TABLE #{table_name} MODIFY #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise
@@ -137,13 +137,14 @@ module ODBCExt
   
   def indexes(table_name, name = nil)
     # Hide primary key indexes.
-    super(table_name, name).delete_if { |i| i.name =~ /^PK_/ }
+    # Primary key indexes take the form <tablename>_<primary key name>_<integer>
+    super(table_name, name).delete_if { |i| i.unique && i.name =~ /^\w+_\w+_\d+$/ }
   end
   
   def add_column_options!(sql, options) # :nodoc:
     @logger.unknown("ODBCAdapter#add_column_options!>") if @trace
     @logger.unknown("args=[#{sql}]") if @trace
-    sql << " DEFAULT #{quote(options[:default], options[:column])}" unless options[:default].nil?
+    sql << " DEFAULT #{quote(options[:default], options[:column])}" if options_include_default?(options)
     
     if column_type_allows_null?(sql, options)
       sql << (options[:null] == false ? " NOT NULL" : " NULL")

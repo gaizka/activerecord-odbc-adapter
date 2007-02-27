@@ -203,3 +203,13 @@ create table legacy_things (
   version int default 0,
   primary key (id)
 );
+
+create table numeric_data (
+  id serial primary key,
+  bank_balance decimal(10,2),
+  big_bank_balance decimal(15,2),
+  world_population decimal(10,0),
+  my_house_population decimal(2,0),
+  decimal_number_with_default decimal(3,2) DEFAULT 2.78
+);
+

@@ -2,10 +2,20 @@
 
 (C) 2006 OpenLink Software
 
-09-Jan-2007
-
 
 == Status
+
+23-Feb-2007
+
+The adapter has been updated to support Rails 1.2.x / ActiveRecord 1.15.x.
+The new adapter (v1.4) is not recommended for use with Rails 1.1 / ActiveRecord
+1.14.x. Please use v1.3 of the adapter with Rails 1.1.
+
+The driver now supports the new ActiveRecord :decimal type and an
+:emulate_booleans connection option. See http://odbc-rails.rubyforge.org for
+more information about this option.
+
+09-Jan-2007
 
 The adapter accompanying this note is a Generic ODBC Adapter for Ruby on Rails
 being developed by <B>OpenLink&nbsp;Software</B>[http://www.openlinksw.com].
@@ -18,7 +28,7 @@ its own adapter.
 It currently supports Ingres r3, Informix 9.3 or later, Oracle 10g,
 MySQL 5 and OpenLink's Virtuoso
 (Open&nbsp;Source&nbsp;Edition[http://virtuoso.openlinksw.com]), 
-SQL Server 2000, Sybase ASE 15, DB2 v9, Progress v8/9/10 and PostgreSQL 8.2.
+SQL Server 2000/2005, Sybase ASE 15, DB2 v9, Progress v8/9/10 and PostgreSQL 8.2.
 
 Testing to date has been limited to the ROR 'Expenses' sample
 application described at http://developer.apple.com/tools/rubyonrails.html

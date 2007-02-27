@@ -28,6 +28,7 @@ DROP TABLE fk_test_has_fk;
 DROP TABLE fk_test_has_pk;
 DROP TABLE keyboards;
 DROP TABLE legacy_things;
+DROP TABLE numeric_data;
 
 drop sequence accounts_seq;
 drop sequence funny_jokes_seq;
@@ -59,4 +60,5 @@ drop sequence fk_test_has_pk_seq;
 drop sequence fk_test_has_fk_seq;
 drop sequence keyboards_seq;
 drop sequence legacy_things_seq;
+drop sequence numeric_data_seq;
 

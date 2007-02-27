@@ -65,7 +65,8 @@ module ODBCExt
     @logger.unknown("ODBCAdapter#add_column_options!>") if @trace
     @logger.unknown("args=[#{sql}]") if @trace
     sql << " NOT NULL" if options[:null] == false
-    sql << " DEFAULT #{quote(options[:default], options[:column])}" unless options[:default].nil?
+    # Progress 89 doesn't accept 'DEFAULT NULL'
+    sql << " DEFAULT #{quote(options[:default], options[:column])}" if options_include_default?(options) && !options[:default].nil?
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise StatementInvalid, e.message
@@ -131,9 +132,9 @@ module ODBCExt
     raise ActiveRecord::ActiveRecordError, e.message    
   end
   
-  def drop_table(name)
+  def drop_table(name, options = {})
     @logger.unknown("ODBCAdapter#drop_table>") if @trace
-    super(name)
+    super(name, options)
     drop_sequence("#{name}_seq")
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace

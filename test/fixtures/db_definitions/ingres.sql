@@ -230,3 +230,12 @@ CREATE TABLE legacy_things (
 ) WITH PAGE_SIZE=8192;
 CREATE SEQUENCE legacy_things_seq MINVALUE 10000;
 
+CREATE TABLE numeric_data (
+  id INTEGER PRIMARY KEY NOT NULL,
+  bank_balance decimal(10,2),
+  big_bank_balance decimal(15,2),
+  world_population decimal(10,0),
+  my_house_population decimal(2,0),
+  decimal_number_with_default decimal(3,2) DEFAULT 2.78
+) WITH PAGE_SIZE=8192;
+CREATE SEQUENCE numeric_data_seq MINVALUE 10000;

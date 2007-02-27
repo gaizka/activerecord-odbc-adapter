@@ -106,14 +106,10 @@ module ODBCExt
   
   def add_column(table_name, column_name, type, options = {})
     @logger.unknown("ODBCAdapter#add_column>") if @trace
-    sql_commands = ["ALTER TABLE #{table_name} ADD #{column_name} #{type_to_sql(type, options[:limit])}"]
-    if options[:default]
-      sql_commands << "ALTER TABLE #{table_name} ALTER #{column_name} SET DEFAULT '#{options[:default]}'"
-    end
-    if options[:null] == false
-      sql_commands << "ALTER TABLE #{table_name} ALTER #{column_name} SET NOT NULL"
-    end
-    sql_commands.each { |cmd| execute(cmd) }
+    sql = "ALTER TABLE #{table_name} ADD #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+    sql << " NOT NULL" if options[:null] == false
+    sql << " DEFAULT #{quote(options[:default])}" if options[:default]
+    execute(sql)
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise
@@ -121,8 +117,8 @@ module ODBCExt
   
   def change_column(table_name, column_name, type, options = {})
     @logger.unknown("ODBCAdapter#change_column>") if @trace
-    execute "ALTER TABLE #{table_name} ALTER  #{column_name} TYPE #{type_to_sql(type, options[:limit])}"
-    change_column_default(table_name, column_name, options[:default]) unless options[:default].nil?
+    execute "ALTER TABLE #{table_name} ALTER  #{column_name} TYPE #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+    change_column_default(table_name, column_name, options[:default]) if options_include_default?(options)
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise
@@ -130,7 +126,7 @@ module ODBCExt
   
   def change_column_default(table_name, column_name, default)
     @logger.unknown("ODBCAdapter#change_column_default>") if @trace
-    execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT '#{default}'"        
+    execute "ALTER TABLE #{table_name} ALTER COLUMN #{column_name} SET DEFAULT #{quote(default)}"        
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise

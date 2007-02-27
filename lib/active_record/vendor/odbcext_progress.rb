@@ -94,9 +94,9 @@ module ODBCExt
     raise ActiveRecord::ActiveRecordError, e.message
   end
   
-  def drop_table(name)
+  def drop_table(name, options = {})
     @logger.unknown("ODBCAdapter#drop_table>") if @trace
-    super(name)
+    super(name, options)
     execute "DROP SEQUENCE PUB.#{name}_seq"          
   rescue Exception => e
     if e.message !~ /10520/

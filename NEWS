@@ -1,3 +1,8 @@
+February 27, 2007, V1.4:
+  * Changes for Rails 1.2.x / ActiveRecord 1.15.x
+  * Added support for :decimal type
+  * Added :emulate_booleans connection option
+
 January 9, 2007, V1.3:
   * Added support for PostgreSQL
 

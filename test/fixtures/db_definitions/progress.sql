@@ -232,3 +232,14 @@ create table topics (
   "type" varchar(50)
 );
 create sequence topics_seq minvalue 10000;
+
+create table numeric_data (
+  id integer not null primary key,
+  bank_balance decimal(10,2),
+  big_bank_balance decimal(15,2),
+  world_population decimal(10),
+  my_house_population decimal(2),
+  decimal_number_with_default decimal(3,2) default 2.78
+);
+create sequence numeric_data_seq minvalue 10000;
+

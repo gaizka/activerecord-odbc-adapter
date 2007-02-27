@@ -198,3 +198,13 @@ CREATE TABLE legacy_things (
   tps_report_number int default NULL,
   version int default 0
 );
+
+create table numeric_data (
+  id INTEGER NOT NULL IDENTITY (START WITH 1, INCREMENT BY 1) PRIMARY KEY,
+  bank_balance decimal(10,2),
+  big_bank_balance decimal(15,2),
+  world_population decimal(10,0),
+  my_house_population decimal(2,0),
+  decimal_number_with_default decimal(3,2) DEFAULT 2.78
+);
+

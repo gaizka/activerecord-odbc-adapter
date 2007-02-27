@@ -28,6 +28,7 @@ drop table readers;
 drop table subscribers;
 drop table tasks;
 drop table topics;
+drop table numeric_data;
 
 drop sequence accounts_seq;
 drop sequence authors_seq;
@@ -59,3 +60,4 @@ drop sequence readers_seq;
 drop sequence subscribers_seq;
 drop sequence tasks_seq;
 drop sequence topics_seq;
+drop sequence numeric_data_seq;

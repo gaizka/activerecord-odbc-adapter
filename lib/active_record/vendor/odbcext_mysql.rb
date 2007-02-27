@@ -23,7 +23,6 @@
 #  CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 #  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
-
 module ODBCExt
   
   # ------------------------------------------------------------------------
@@ -68,6 +67,24 @@ module ODBCExt
     string.gsub(/\\/, '\&\&').gsub(/'/, "''")
   end
   
+  def create_database(name)
+    @logger.unknown("ODBCAdapter#create_database>") if @trace
+    @logger.unknown("args=[#{name}]") if @trace    
+    execute "CREATE DATABASE `#{name}`"
+  rescue Exception => e
+    @logger.unknown("exception=#{e}") if @trace
+    raise    
+  end
+
+  def drop_database(name)
+    @logger.unknown("ODBCAdapter#drop_database>") if @trace
+    @logger.unknown("args=[#{name}]") if @trace    
+    execute "DROP DATABASE IF EXISTS `#{name}`"
+  rescue Exception => e
+    @logger.unknown("exception=#{e}") if @trace
+    raise    
+  end
+  
   def create_table(name, options = {})
     @logger.unknown("ODBCAdapter#create_table>") if @trace
     super(name, {:options => "ENGINE=InnoDB"}.merge(options))
@@ -87,8 +104,10 @@ module ODBCExt
   def change_column(table_name, column_name, type, options = {})
     @logger.unknown("ODBCAdapter#change_column>") if @trace
     # column_name.to_s used in case column_name is a symbol
-    options[:default] ||= columns(table_name).find { |c| c.name == column_name.to_s }.default    
-    change_column_sql = "ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{type_to_sql(type, options[:limit])}"
+    unless options_include_default?(options)
+      options[:default] = columns(table_name).find { |c| c.name == column_name.to_s }.default    
+    end
+    change_column_sql = "ALTER TABLE #{table_name} CHANGE #{column_name} #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
     add_column_options!(change_column_sql, options)
     execute(change_column_sql)
   rescue Exception => e
@@ -110,9 +129,8 @@ module ODBCExt
   def change_column_default(table_name, column_name, default)
     @logger.unknown("ODBCAdapter#change_column_default>") if @trace
     col = columns(table_name).find{ |c| c.name == column_name.to_s }
-    current_type = col.sql_type
-    current_type << "(#{col.limit})" if col.limit
-    change_column(table_name, column_name, current_type, { :default => default })
+    change_column(table_name, column_name, col.type, :default => default,
+      :limit => col.limit, :precision => col.precision, :scale => col.scale)
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise
@@ -122,7 +140,17 @@ module ODBCExt
     # Skip primary key indexes
     super(table_name, name).delete_if { |i| i.unique && i.name =~ /^PRIMARY$/ }
   end
-    
+
+  def options_include_default?(options)
+    # MySQL 5.x doesn't allow DEFAULT NULL for first timestamp column in a table
+    if options.include?(:default) && options[:default].nil?
+      if options.include?(:column) && options[:column].sql_type =~ /timestamp/i
+        options.delete(:default)
+      end
+    end
+    super(options)
+  end
+          
   def structure_dump
     @logger.unknown("ODBCAdapter#structure_dump>") if @trace
     select_all("SHOW TABLES").inject("") do |structure, table|

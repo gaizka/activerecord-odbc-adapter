@@ -77,6 +77,24 @@ module ODBCExt
   #
   # DBMS specific methods which override the default implementation 
   # provided by the ODBCAdapter core.
+  # 
+  def create_database(name)
+    @logger.unknown("ODBCAdapter#create_database>") if @trace
+    @logger.unknown("args=[#{name}]") if @trace    
+    execute "CREATE DATABASE #{name}"
+  rescue Exception => e
+    @logger.unknown("exception=#{e}") if @trace
+    raise    
+  end
+      
+  def drop_database(name)
+    @logger.unknown("ODBCAdapter#drop_database>") if @trace
+    @logger.unknown("args=[#{name}]") if @trace    
+    execute "DROP DATABASE #{name}"
+  rescue Exception => e
+    @logger.unknown("exception=#{e}") if @trace
+    raise    
+  end
   
   def rename_table(name, new_name)
     @logger.unknown("ODBCAdapter#rename_table>") if @trace
@@ -101,18 +119,31 @@ module ODBCExt
   
   def change_column(table_name, column_name, type, options = {})
     @logger.unknown("ODBCAdapter#change_column>") if @trace
-    sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit])}"]
-    if options[:default]
+    sql_commands = ["ALTER TABLE #{table_name} ALTER COLUMN #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"]
+    if options_include_default?(options)
       # Remove default constraints first
       defaults = select_all "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
       defaults.each {|constraint|
         execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
       }              
-      sql_commands << "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{options[:default]} FOR #{column_name}"
+      sql_commands << "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(options[:default])} FOR #{column_name}"
     end
     sql_commands.each {|c|
       execute(c)
     }          
+  rescue Exception => e
+    @logger.unknown("exception=#{e}") if @trace
+    raise
+  end
+  
+  def change_column_default(table_name, column_name, default)
+    @logger.unknown("ODBCAdapter#change_column_default>") if @trace    
+    # Remove default constraints first
+    defaults = select_all "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
+    defaults.each {|constraint|
+      execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
+    }              
+    execute "ALTER TABLE #{table_name} ADD CONSTRAINT DF_#{table_name}_#{column_name} DEFAULT #{quote(default)} FOR #{column_name}"
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise

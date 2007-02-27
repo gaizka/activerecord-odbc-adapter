@@ -106,9 +106,9 @@ module ODBCExt
     raise
   end
   
-  def drop_table(name)
+  def drop_table(name, options = {})
     @logger.unknown("ODBCAdapter#drop_table>") if @trace
-    super(name)
+    super(name, options)
     execute "DROP SEQUENCE #{name}_seq"          
   rescue Exception => e
     if e.message !~ /ORA-02289/i
@@ -129,7 +129,7 @@ module ODBCExt
 
   def change_column(table_name, column_name, type, options = {})
     @logger.unknown("ODBCAdapter#change_column>") if @trace
-    change_column_sql = "ALTER TABLE #{table_name} MODIFY #{column_name} #{type_to_sql(type, options[:limit])}"
+    change_column_sql = "ALTER TABLE #{table_name} MODIFY #{column_name} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
     add_column_options!(change_column_sql, options)
     execute(change_column_sql)
   rescue Exception => e

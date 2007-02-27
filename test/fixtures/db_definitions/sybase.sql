@@ -26,8 +26,8 @@ CREATE TABLE topics (
   author_name varchar(255) NULL,
   author_email_address varchar(255) NULL,
   written_on datetime NULL,
-  bonus_time time NULL,
-  last_read date NULL,
+  bonus_time datetime NULL,
+  last_read datetime NULL,
   content varchar(255) NULL,
   approved bit default 1,
   replies_count int default 0,
@@ -118,7 +118,7 @@ CREATE TABLE mixins (
 
 CREATE TABLE people (
   id int IDENTITY PRIMARY KEY,
-  first_name varchar(40) NOT NULL,
+  first_name varchar(40) NULL,
   lock_version int DEFAULT 0
 )
 
@@ -181,8 +181,8 @@ CREATE TABLE fk_test_has_pk (
 )
 
 CREATE TABLE fk_test_has_fk (
-  id    int PRIMARY KEY,
-  fk_id int NOT NULL,
+  id    numeric(9,0) PRIMARY KEY,
+  fk_id numeric(9,0) NOT NULL,
 
   FOREIGN KEY (fk_id) REFERENCES fk_test_has_pk(id)
 )
@@ -197,8 +197,17 @@ CREATE TABLE keyboards (
 CREATE TABLE legacy_things (
   id int IDENTITY PRIMARY KEY,
   tps_report_number int default NULL,
-  version int default 0,
+  version int default 0
+)
+
+
+CREATE TABLE numeric_data (
+  id int IDENTITY PRIMARY KEY,
+  bank_balance numeric(10,2),
+  big_bank_balance numeric(15,2),
+  world_population numeric(10),
+  my_house_population numeric(2),
+  decimal_number_with_default numeric(3,2) DEFAULT 2.78
 )
 
 go
-

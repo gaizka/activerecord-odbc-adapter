@@ -74,6 +74,17 @@ module ODBCExt
   # DBMS specific methods which override the default implementation 
   # provided by the ODBCAdapter core.
   
+  def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+    if type == :decimal
+      # Force an explicit scale if none supplied to specify the fixed
+      # point form of Virtuoso's DECIMAL type. If no scale is specified,
+      # the Virtuoso DECIMAL type stores floating point values.
+      precision ||= 32
+      scale ||= 0
+    end
+    super(type, limit, precision, scale)
+  end
+  
   def quote_string(s)
     s.gsub(/\\/, '\&\&').gsub(/'/, "''")
   end
@@ -104,7 +115,7 @@ module ODBCExt
     @logger.unknown("ODBCAdapter#change_column>") if @trace
     @logger.unknown("args=[#{table_name}|#{column_name}|#{type}]") if @trace
     change_column_sql = "ALTER TABLE #{table_name} MODIFY #{column_name} " +
-        "#{type_to_sql(type)}" 
+        "#{type_to_sql(type, options[:limit], options[:precision], options[:scale])}" 
 
     # Add any :null and :default options
     add_column_options!(change_column_sql, options)
@@ -117,7 +128,9 @@ module ODBCExt
   def change_column_default(table_name, column_name, default)
     @logger.unknown("ODBCAdapter#change_column_default>") if @trace
     @logger.unknown("args=[#{table_name}|#{column_name}]") if @trace    
-    change_column(table_name, column_name, nil, {:default => default})
+    col = columns(table_name).find {|c| c.name == column_name.to_s }
+    change_column(table_name, column_name, col.type, :default => default,
+      :limit => col.limit, :precision => col.precision, :scale => col.scale)
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise ActiveRecord::ActiveRecordError, e.message

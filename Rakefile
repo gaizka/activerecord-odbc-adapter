@@ -40,7 +40,7 @@ require "support/rake/rails_plugin_package_task"
 #
 PKG_NAME     = 'odbc-rails'
 PKG_SUMMARY  = "ODBC Data Adapter for ActiveRecord."
-PKG_VERSION  = '1.3'
+PKG_VERSION  = '1.4'
 PKG_HOMEPAGE = 'http://odbc-rails.rubyforge.org'
 PKG_AUTHOR = "Carl Blakeley"
 PKG_AUTHOR_EMAIL = "cblakeley@openlinksw.co.uk"
@@ -96,7 +96,7 @@ spec = Gem::Specification.new do |s|
   s.email = PKG_AUTHOR_EMAIL
   s.homepage = PKG_HOMEPAGE
   s.platform = Gem::Platform::RUBY
-  s.add_dependency('activerecord', '>= 1.11')
+  s.add_dependency('activerecord', '>= 1.15')
   s.summary = PKG_SUMMARY
   s.files = FileList["{lib,test,support}/**/*", "AUTHORS", "ChangeLog", "COPYING", "LICENSE", "NEWS", "README"].to_a
   s.require_path = "lib"

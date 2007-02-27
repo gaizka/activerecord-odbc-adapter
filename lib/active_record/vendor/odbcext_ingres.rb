@@ -82,10 +82,10 @@ module ODBCExt
     raise ActiveRecord::ActiveRecordError, e.message
   end
   
-  def drop_table(name)
+  def drop_table(name, options = {})
     @logger.unknown("ODBCAdapter#drop_table>") if @trace
     @logger.unknown("args=[#{name}]") if @trace
-    super
+    super(name, options)
     execute "DROP SEQUENCE #{name}_seq"          
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
@@ -96,7 +96,7 @@ module ODBCExt
     @logger.unknown("ODBCAdapter#add_column>") if @trace
     @logger.unknown("args=[#{table_name}|#{column_name}]") if @trace
     
-    sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit])}"
+    sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
     sql << " DEFAULT #{quote(options[:default], options[:column])}" unless options[:default].nil?
 
     # Ingres requires that if 'ALTER TABLE table ADD column' specifies a NOT NULL constraint,
@@ -125,7 +125,7 @@ module ODBCExt
     @logger.unknown("ODBCAdapter#change_column>") if @trace
     @logger.unknown("args=[#{table_name}|#{column_name}|#{type}]") if @trace
     change_column_sql = "ALTER TABLE #{table_name} ALTER #{column_name} " +
-        "#{type_to_sql(type)}" 
+        "#{type_to_sql(type, options[:limit], options[:precision], options[:scale])}" 
     # Add any :null and :default options
     add_column_options!(change_column_sql, options)
     execute(change_column_sql)    
