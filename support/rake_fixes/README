@@ -1,0 +1,6 @@
+databases.dif contains changes required to databases.rake in order for
+the test:units and test:functional tasks to recognize the odbc-rails
+adapter.
+
+databases.rake can be found somewhere like:
+ruby/lib/ruby/gems/1.8/gems/rails-1.2.1/lib/tasks

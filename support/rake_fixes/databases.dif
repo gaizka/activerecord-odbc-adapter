@@ -1,0 +1,13 @@
+--- databases.rake.orig	2007-01-22 12:09:02.230758200 +0000
++++ databases.rake	2007-02-01 17:08:12.350537700 +0000
+@@ -142,6 +142,10 @@
+         when "firebird"
+           ActiveRecord::Base.establish_connection(:test)
+           ActiveRecord::Base.connection.recreate_database!
++        when "odbc"
++          ActiveRecord::Base.establish_connection(:test)
++          test_db = ActiveRecord::Base.connection.current_database
++          ActiveRecord::Base.connection.recreate_database(test_db, false) unless test_db.empty?
+         else
+           raise "Task not supported by '#{abcs["test"]["adapter"]}'"
+       end
