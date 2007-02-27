@@ -61,7 +61,15 @@ begin
       # The ODBC adapter requires the Ruby ODBC module (version 0.9991 or 
       # later), available from http://raa.ruby-lang.org/project/ruby-odbc
       #
-      # == Status at 09-Jan-2007
+      # == Status
+      #
+      # === 27-Feb-2007
+      #
+      # Adapter updated to support Rails 1.2.x / ActiveRecord 1.15.x.
+      # Support added for AR :decimal type and :emulate_booleans connection
+      # option introduced.
+      #
+      # === 09-Jan-2007
       #
       # The current adapter supports Ingres r3, Informix 9.3 or later, 
       # Virtuoso (Open-Source Edition) 4.5, Oracle 10g, MySQL 5, 
@@ -113,6 +121,11 @@ begin
       #   If set to <tt>true</tt>, suppresses quoting of numeric literals.
       #   If omitted, <tt>:convert_numeric_literals</tt> defaults to 
       #   <tt>false</tt>.
+      # <tt>:emulate_booleans</tt>::
+      #   Instructs the adapter to interpret certain numeric column types as
+      #   holding boolean, rather than numeric, data. It is intended for use 
+      #   with databases which do not have a native boolean data type. 
+      #   If omitted, <tt>:emulate_booleans</tt> defaults to <tt>false</tt>.
       #   
       # == Usage Notes
       # === Informix
