@@ -81,7 +81,7 @@ if !$activeRecDir
   if $rubyGems
     puts "Looking for installed ActiveRecord gems."
     ar = Dir.entries(File.join(Gem::dir,"gems")).find_all { |g| 
-      g =~ /^activerecord/i 
+      g =~ /^activerecord-\d+\.\d+\.\d+$/i 
     }
     if !ar.empty?
       # Sort to ensure we install the ODBC adapter into the latest ActiveRecord

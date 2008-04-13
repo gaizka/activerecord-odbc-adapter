@@ -32,7 +32,6 @@ require 'rake/clean'
 require 'rake/gempackagetask'
 require 'rake/packagetask'
 require 'rake/rdoctask'
-require "support/rake/rails_plugin_package_task"
 
 
 #
@@ -40,7 +39,7 @@ require "support/rake/rails_plugin_package_task"
 #
 PKG_NAME     = 'odbc-rails'
 PKG_SUMMARY  = "ODBC Data Adapter for ActiveRecord."
-PKG_VERSION  = '1.4'
+PKG_VERSION  = '1.5-rc1'
 PKG_HOMEPAGE = 'http://odbc-rails.rubyforge.org'
 PKG_AUTHOR = "Carl Blakeley"
 PKG_AUTHOR_EMAIL = "cblakeley@openlinksw.co.uk"
@@ -96,7 +95,7 @@ spec = Gem::Specification.new do |s|
   s.email = PKG_AUTHOR_EMAIL
   s.homepage = PKG_HOMEPAGE
   s.platform = Gem::Platform::RUBY
-  s.add_dependency('activerecord', '>= 1.15')
+  s.add_dependency('activerecord', '>= 1.15.6', '< 2.0')
   s.summary = PKG_SUMMARY
   s.files = FileList["{lib,test,support}/**/*", "AUTHORS", "ChangeLog", "COPYING", "LICENSE", "NEWS", "README"].to_a
   s.require_path = "lib"
@@ -129,23 +128,6 @@ task :install do
   ruby "install_odbc.rb"
 end
 
-
-#
-#  Configure plugin
-#
-desc "Configure plugin (required only if plugin was \n\t\t\t" +
-     " manually unpacked into vendor/plugins)"
-task :configure_plugin do
-  begin
-    ruby "install.rb"
-  rescue
-    puts <<-MSG 
-      Run this task from the vendor/plugins/#{PKG_NAME}_#{PKG_VERSION} 
-      folder of your Rails application.
-      MSG
-  end
-end
-
 #
 #  Generate distribution tar and zip packages
 #
@@ -156,21 +138,8 @@ Rake::PackageTask.new(PKG_NAME, PKG_VERSION) do |p|
     p.package_files.include(PKG_FILES)
 end
 
-
-#
-# Generate plugin package
-#
-Rake::RailsPluginPackageTask.new(PKG_NAME, PKG_VERSION) do |p|
-  p.package_dir = "distrib_plugin"
-  p.package_files = PKG_FILES
-  p.extra_links = {"Project home page"=>PKG_HOMEPAGE}
-  p.verbose = true
-end
-
-
 #
 #  Cleanup
 #
 CLEAN.include('rdoc')
 CLEAN.include('distrib')
-CLEAN.include('distrib_plugin')
