@@ -109,9 +109,9 @@ module ODBCExt
     # Remove default constraints first
     defaults = select_all "select def.name from sysobjects def, syscolumns col, sysobjects tab where col.cdefault = def.id and col.name = '#{column_name}' and tab.name = '#{table_name}' and col.id = tab.id"
     defaults.each {|constraint|
-      execute "ALTER TABLE #{table_name} DROP CONSTRAINT #{constraint["name"]}"
+      execute "ALTER TABLE #{quote_table_name(table_name)} DROP CONSTRAINT #{constraint["name"]}"
     }                      
-    execute "ALTER TABLE #{table_name} DROP COLUMN #{quote_column_name(column_name)}"                   
+    execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"                   
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise

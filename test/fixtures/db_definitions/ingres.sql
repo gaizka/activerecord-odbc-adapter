@@ -239,3 +239,14 @@ CREATE TABLE numeric_data (
   decimal_number_with_default decimal(3,2) DEFAULT 2.78
 ) WITH PAGE_SIZE=8192;
 CREATE SEQUENCE numeric_data_seq MINVALUE 10000;
+
+CREATE TABLE mixed_case_monkeys (
+  "monkeyID" INTEGER PRIMARY KEY NOT NULL,
+  "fleaCount" INTEGER DEFAULT NULL
+) WITH PAGE_SIZE=8192;
+CREATE SEQUENCE mixed_case_monkeys_seq MINVALUE 10000;
+
+CREATE TABLE minimalistics (
+  id INTEGER PRIMARY KEY NOT NULL
+) WITH PAGE_SIZE=8192;
+CREATE SEQUENCE minimalistics_seq MINVALUE 10000;

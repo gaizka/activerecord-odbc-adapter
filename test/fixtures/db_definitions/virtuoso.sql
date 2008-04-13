@@ -208,3 +208,11 @@ create table numeric_data (
   decimal_number_with_default decimal(3,2) DEFAULT 2.78
 );
 
+create table mixed_case_monkeys (
+  monkeyID INTEGER NOT NULL PRIMARY KEY,
+  fleaCount INTEGER
+);
+
+create table minimalistics (
+  id INT NOT NULL PRIMARY KEY
+);

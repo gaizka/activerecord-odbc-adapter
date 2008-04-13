@@ -213,3 +213,11 @@ create table numeric_data (
   decimal_number_with_default decimal(3,2) DEFAULT 2.78
 );
 
+create table mixed_case_monkeys (
+  "monkeyID" serial primary key,
+  "fleaCount" int
+);
+
+create table minimalistics (
+  id serial primary key
+);

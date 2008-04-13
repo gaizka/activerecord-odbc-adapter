@@ -49,8 +49,8 @@ begin
         conn.autocommit = true
         
         ConnectionAdapters::ODBCAdapter.new(conn, {:dsn => dsn, :username => username, 
-        :password => password, :trace => trace, :conv_num_lits => conv_num_lits, 
-        :emulate_booleans => emulate_bools}, logger)
+            :password => password, :trace => trace, :conv_num_lits => conv_num_lits, 
+            :emulate_booleans => emulate_bools}, logger)
       end
     end # class Base
     
@@ -62,6 +62,10 @@ begin
       # later), available from http://raa.ruby-lang.org/project/ruby-odbc
       #
       # == Status
+      #
+      # === 28-Mar-2008
+      #
+      # Adapter updated to support Rails 2.0.2 / ActiveRecord 2.0.2.
       #
       # === 27-Feb-2007
       #
@@ -371,16 +375,16 @@ begin
           
           # Specifies the miniminum information we need about the data source
           @@baseInfo = 
-          [
-          ODBC::SQL_DBMS_NAME,
-          ODBC::SQL_DBMS_VER,
-          ODBC::SQL_IDENTIFIER_CASE,
-          ODBC::SQL_QUOTED_IDENTIFIER_CASE,
-          ODBC::SQL_IDENTIFIER_QUOTE_CHAR,
-          ODBC::SQL_MAX_IDENTIFIER_LEN,		
-          ODBC::SQL_MAX_TABLE_NAME_LEN,
-          ODBC::SQL_USER_NAME,
-          ODBC::SQL_DATABASE_NAME
+            [
+            ODBC::SQL_DBMS_NAME,
+            ODBC::SQL_DBMS_VER,
+            ODBC::SQL_IDENTIFIER_CASE,
+            ODBC::SQL_QUOTED_IDENTIFIER_CASE,
+            ODBC::SQL_IDENTIFIER_QUOTE_CHAR,
+            ODBC::SQL_MAX_IDENTIFIER_LEN,		
+            ODBC::SQL_MAX_TABLE_NAME_LEN,
+            ODBC::SQL_USER_NAME,
+            ODBC::SQL_DATABASE_NAME
           ]
           
           def initialize(connection)
@@ -565,21 +569,23 @@ begin
               value = column.type == :integer ? value.to_i : value.to_f
               value.to_s            
             elsif (column.nil? && @convert_numeric_literals && 
-             (value =~ /^[-+]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?$/))
+                  (value =~ /^[-+]?[0-9]+[.]?[0-9]*([eE][-+]?[0-9]+)?$/))
               value
             else
               "'#{quote_string(value)}'" # ' (for ruby-mode)
             end
           when NilClass then "NULL"
           when TrueClass then (column && column.type == :integer ?
-							'1' : quoted_true)
+              '1' : quoted_true)
           when FalseClass then (column && column.type == :integer ? 
-							'0' : quoted_false)
-          when Float, Fixnum, Bignum then value.to_s
-          when Date then quoted_date(value)
-          when Time, DateTime then quoted_date(value)
+              '0' : quoted_false)
+          when Float, Fixnum, Bignum then value.to_s          
           else
-            super
+            if value.acts_like?(:date) || value.acts_like?(:time)
+              quoted_date(value)
+            else
+              super
+            end
           end
         rescue Exception => e
           @logger.unknown("exception=#{e}") if @@trace
@@ -617,26 +623,38 @@ begin
           idQuoteChar.chr + name + idQuoteChar.chr
         end
         
+        def quote_table_name(name)
+          @logger.unknown("ODBCAdapter#quote_table_name>") if @trace
+          @logger.unknown("args=[#{name}]") if @trace        
+          quote_column_name(name)
+        end
+
         def quoted_true
           @logger.unknown("ODBCAdapter#quoted_true>") if @@trace
-		  '1'
+          '1'
         end
         
         def quoted_false
           @logger.unknown("ODBCAdapter#quoted_false>") if @@trace
-		  '0'
+          '0'
         end
         
         def quoted_date(value)
           @logger.unknown("ODBCAdapter#quoted_date>") if @@trace
-          @logger.unknown("args=[#{value}]") if @@trace        
+          @logger.unknown("args=[#{value}]") if @@trace     
+
+          # abstract_adapter's #quoted_date uses value.to_s(:db), but this
+          # doesn't differentiate between pure dates (Date) and date/time
+          # composites (Time and DateTime).
+          # :db format string defaults to '%Y-%m-%d %H:%M:%S' and is defined
+          # in ActiveSupport::CoreExtensions::Time::Conversions::DATE_FORMATS
+          
           # Ideally, we'd return an ODBC date or timestamp literal escape 
           # sequence, but not all ODBC drivers support them.
-          case value
-          when Time, DateTime
+          if value.acts_like?(:time) # Time, DateTime
             #%Q!{ts #{value.strftime("%Y-%m-%d %H:%M:%S")}}!
             %Q!'#{value.strftime("%Y-%m-%d %H:%M:%S")}'!
-          when Date
+          else # Date
             #%Q!{d #{value.strftime("%Y-%m-%d")}}!
             %Q!'#{value.strftime("%Y-%m-%d")}'!
           end
@@ -697,89 +715,22 @@ begin
           @logger.unknown("ODBCAdapter#select_all>") if @@trace
           @logger.unknown("args=[#{sql}|#{name}]") if @@trace
           retVal = []
-          scrollableCursor = false
-          limit = 0
-          offset = 0
-          qry = sql.dup
-          
-          # Strip OFFSET and LIMIT from query if present, since ODBC doesn't
-          # support them in a generic form.
-          #
-          # TODO: Translate any OFFSET/LIMIT option to native SQL if DBMS supports it.
-          # This will perform much better than simulating them.
-          if qry =~ /(\bLIMIT\s+)(\d+)/i then
-            if (limit = $2.to_i) == 0 then return retVal end
-          end
-          
-          if qry =~ /(\bOFFSET\s+)(\d+)/i then offset = $2.to_i end
-          qry.gsub!(/(\bLIMIT\s+\d+|\bOFFSET\s+\d+)/i, '')
-          
-          # It's been assumed that it's quicker to support an offset and/or
-          # limit restriction using a forward-only cursor. A static cursor will 
-          # presumably take a snapshot of the whole result set, whereas when 
-          # using a forward-only cursor we only fetch the first offset+limit 
-          # rows.
-=begin        
-        if offset > 0 then
-          scrollableCursor = true
-          begin
-            # ODBCStatement::fetch_first requires a scrollable cursor
-            @connection.cursortype = ODBC::SQL_CURSOR_STATIC
-          rescue
-            # Assume ODBC driver doesn't support scrollable cursors
-            @connection.cursortype = ODBC::SQL_CURSOR_FORWARD_ONLY
-            scrollableCursor = false
-          end
-        end
-=end
-          
-          # Execute the query
-          begin
-            stmt = @connection.run(qry)
-          rescue Exception => e
-            stmt.drop unless stmt.nil?
-            @logger.unknown("exception=#{e}") if @@trace && name != :force_error
-            raise StatementInvalid, e.message
-          end
-          
-          rColDescs = stmt.columns(true)
-          
-          # Get the rows, handling any offset and/or limit stipulated
-          if scrollableCursor then
-            rRows = nil
-            # scrollableCursor == true => offset > 0
-            if stmt.fetch_scroll(ODBC::SQL_FETCH_ABSOLUTE, offset)
-              rRows = limit > 0 ? stmt.fetch_many(limit) : stmt.fetch_all
-            end
-          else
-            rRows = limit > 0 ? stmt.fetch_many(offset + limit) : stmt.fetch_all
-            # Enforce OFFSET
-            if offset > 0 then 
-              if rRows && rRows.length > offset then
-                rRows.slice!(0, offset)
-              else
-                rRows = nil
-              end
-            end
-            # Enforce LIMIT
-            if limit > 0 && rRows && rRows.length > limit then
-              rRows.slice!(limit..(rRows.length-1))
-            end
-          end
+          hResult = select(sql, name)
+          rRows = hResult[:rows]
+          rColDescs = hResult[:column_descriptors]
           
           # Convert rows from arrays to hashes					
           if rRows
             rRows.each do |row|
               h = Hash.new
-               (0...row.length).each do |iCol|
+              (0...row.length).each do |iCol|
                 h[activeRecIdentCase(rColDescs[iCol].name)] = 
-                convertOdbcValToGenericVal(row[iCol])
+                  convertOdbcValToGenericVal(row[iCol])
               end
               retVal << h
             end
           end
           
-          stmt.drop
           retVal
         end
         
@@ -850,9 +801,9 @@ begin
           # Convert row from array to hash
           if row then
             retVal = h = Hash.new
-             (0...row.length).each do |iCol|
+            (0...row.length).each do |iCol|
               h[activeRecIdentCase(rColDescs[iCol].name)] = 
-              convertOdbcValToGenericVal(row[iCol])
+                convertOdbcValToGenericVal(row[iCol])
             end
           end
           
@@ -866,7 +817,7 @@ begin
           @logger.unknown("ODBCAdapter#execute>") if @@trace
           @logger.unknown("args=[#{sql}|#{name}]") if @@trace
           if sql =~ /^\s*INSERT/i && 
-            [:microsoftsqlserver, :virtuoso, :sybase].include?(@dbmsName)
+              [:microsoftsqlserver, :virtuoso, :sybase].include?(@dbmsName)
             # Guard against IDENTITY insert problems caused by explicit inserts
             # into autoincrementing id column.
             insert(sql, name)
@@ -880,49 +831,12 @@ begin
           end
         end
         
-        alias_method :delete, :execute
-        alias_method :update, :execute
-        
         # Returns the ID of the last inserted row.
         def insert(sql, name = nil, pk = nil, id_value = nil, 
-                   sequence_name = nil)
+            sequence_name = nil)
           @logger.unknown("ODBCAdapter#insert>") if @@trace
           @logger.unknown("args=[#{sql}|#{name}|#{pk}|#{id_value}|#{sequence_name}]") if @@trace
-          # id_value ::= pre-assigned id
-          retry_count = 0
-          begin
-            pre_insert(sql, name, pk, id_value, sequence_name) if respond_to?("pre_insert")
-            stmt = @connection.run(sql)
-            table = sql.split(" ", 4)[2]
-            res = id_value || last_insert_id(table, sequence_name || 
-                                             default_sequence_name(table, pk), stmt)
-          rescue Exception => e
-            @logger.unknown("exception=#{e}") if @@trace
-            if @dbmsName == :virtuoso  && id_value.nil? && e.message =~ /sr197/i
-              # Error: Non unique primary key
-              # If id column is an autoincrementing IDENTITY column and there
-              # have been prior inserts using explicit id's, the sequence 
-              # associated with the id column could lag behind the id values
-              # inserted explicitly. In the course of subsequent inserts, if
-              # an explicit id isn't given, the autogenerated id may collide
-              # with a previously explicitly inserted value.
-              unless stmt.nil?
-                stmt.drop; stmt = nil
-              end
-              table_name = e.message =~/Non unique primary key on (\w+\.\w+\.\w+)/i ? $1 : nil
-              if table_name && retry_count == 0
-                retry_count += 1
-                # Set next sequence value to be greater than current max. pk value
-                set_sequence(table_name, pk)
-                retry
-              end
-            end
-            raise StatementInvalid, e.message
-          ensure
-            post_insert(sql, name, pk, id_value, sequence_name) if respond_to?("post_insert")
-            stmt.drop unless stmt.nil?
-          end
-          res
+          insert_sql(sql, name, pk, id_value, sequence_name)
         end
         
         # Returns the default sequence name for a table.
@@ -934,7 +848,7 @@ begin
           "#{table}_seq"
         end
         
-        # Set the sequence to the max value of the table’s column.
+        # Set the sequence to the max value of the tableï¿½s column.
         def reset_sequence!(table, column, sequence = nil)
           @logger.unknown("ODBCAdapter#reset_sequence!>") if @@trace
           @logger.unknown("args=[#{table}|#{column}|#{sequence}]") if @@trace
@@ -952,7 +866,7 @@ begin
         def create_database(name)
           @logger.unknown("ODBCAdapter#create_database>") if @trace
           @logger.unknown("args=[#{name}]") if @trace            
-          raise NotImplementedError, "create_database is not implemented"
+          # raise NotImplementedError, "create_database is not implemented"
         rescue Exception => e
           @logger.unknown("exception=#{e}") if @trace
           raise
@@ -961,7 +875,7 @@ begin
         def drop_database(name)
           @logger.unknown("ODBCAdapter#drop_database>") if @trace
           @logger.unknown("args=[#{name}]") if @trace            
-          raise NotImplementedError, "drop_database is not implemented"
+          # raise NotImplementedError, "drop_database is not implemented"
         rescue Exception => e
           @logger.unknown("exception=#{e}") if @trace
           raise
@@ -1070,7 +984,7 @@ begin
               # - PostgreSQL may return '<default>::character varying'
             elsif colDefault =~ /^'(.*)'([ :].*)*$/
               colDefault = $1
-	        #TODO: HACKS for Progress
+              #TODO: HACKS for Progress
             elsif @dbmsName == :progress || @dbmsName == :progress89
               if colDefault =~ /^\?$/
                 colDefault = nil
@@ -1081,8 +995,8 @@ begin
               end
             end
             cols << ODBCColumn.new(activeRecIdentCase(colName), table_name, 
-            colDefault, colSqlType, colNativeType, colNullable, colLimit, 
-            colScale, @odbcExtFile+"_col", booleanColSurrogate, native_database_types())
+              colDefault, colSqlType, colNativeType, colNullable, colLimit, 
+              colScale, @odbcExtFile+"_col", booleanColSurrogate, native_database_types())
           end
           stmt.drop
           cols
@@ -1126,7 +1040,7 @@ begin
 
             if lastColOfIndex
               indexes << IndexDefinition.new(table_name, 
-                                             activeRecIdentCase(indexName), isUnique, indexCols)
+                activeRecIdentCase(indexName), isUnique, indexCols)
             end
           end
           indexes
@@ -1146,7 +1060,7 @@ begin
           return {}.merge(@abstract2NativeTypeMap) unless @abstract2NativeTypeMap.nil?
           
           @abstract2NativeTypeMap = 
-          {
+            {
             :primary_key => nil,
             :string      => nil,
             :text        => nil,
@@ -1190,7 +1104,7 @@ begin
             rCandidateSqlTypes.each do |sqlType|
               if (rNativeTypeDescs = hSql2Native[sqlType])
                 @abstract2NativeTypeMap[abstractType] = 
-                nativeTypeMapping(abstractType, rNativeTypeDescs)
+                  nativeTypeMapping(abstractType, rNativeTypeDescs)
                 isSupported = true
                 break
               end
@@ -1265,7 +1179,7 @@ begin
           raise ActiveRecordError, e.message
         end
         
-        # Changes the column’s definition according to the new options. 
+        # Changes the column's definition according to the new options. 
         # See TableDefinition#column for details of the options you can use.
         def change_column(table_name, column_name, type, options = {})
           @logger.unknown("ODBCAdapter#change_column>") if @@trace
@@ -1332,17 +1246,28 @@ begin
         end
         
         # Returns an array of the values of the first column in a select.
-        #--
-        # No need to implement beyond a tracing wrapper
         def select_values(sql, name = nil)
           @logger.unknown("ODBCAdapter#select_values>") if @@trace
           @logger.unknown("args=[#{sql}|#{name}]") if @@trace        
-          super(sql, name)
+          result = select_all(sql, name)
+          result.map{ |v| v.values.first }
         rescue Exception => e
           @logger.unknown("exception=#{e}") if @@trace
           raise StatementInvalid, e.message
         end
         
+        # Returns an array of arrays containing the field values.
+        # Order is the same as that returned by #columns.
+        def select_rows(sql, name = nil)
+          @logger.unknown("ODBCAdapter#select_rows>") if @@trace
+          @logger.unknown("args=[#{sql}|#{name}]") if @@trace
+          hResult = select(sql, name)
+          hResult[:rows]
+        rescue Exception => e
+          @logger.unknown("exception=#{e}") if @@trace
+          raise StatementInvalid, e.message
+        end
+
         # Wrap a block in a transaction. Returns result of block.
         #--
         # No need to implement beyond a tracing wrapper
@@ -1366,6 +1291,45 @@ begin
           raise ActiveRecordError, e.message
         end
         
+        # Returns the last auto-generated ID from the affected table.
+        def insert_sql(sql, name = nil, pk = nil, id_value = nil, sequence_name = nil) # :nodoc:  
+          # id_value ::= pre-assigned id
+          retry_count = 0
+          begin
+            pre_insert(sql, name, pk, id_value, sequence_name) if respond_to?("pre_insert")
+            stmt = @connection.run(sql)
+            table = sql.split(" ", 4)[2]
+            res = id_value || last_insert_id(table, sequence_name || 
+                default_sequence_name(table, pk), stmt)
+          rescue Exception => e
+            @logger.unknown("exception=#{e}") if @@trace
+            if @dbmsName == :virtuoso  && id_value.nil? && e.message =~ /sr197/i
+              # Error: Non unique primary key
+              # If id column is an autoincrementing IDENTITY column and there
+              # have been prior inserts using explicit id's, the sequence 
+              # associated with the id column could lag behind the id values
+              # inserted explicitly. In the course of subsequent inserts, if
+              # an explicit id isn't given, the autogenerated id may collide
+              # with a previously explicitly inserted value.
+              unless stmt.nil?
+                stmt.drop; stmt = nil
+              end
+              table_name = e.message =~/Non unique primary key on (\w+\.\w+\.\w+)/i ? $1 : nil
+              if table_name && retry_count == 0
+                retry_count += 1
+                # Set next sequence value to be greater than current max. pk value
+                set_sequence(table_name, pk)
+                retry
+              end
+            end
+            raise StatementInvalid, e.message
+          ensure
+            post_insert(sql, name, pk, id_value, sequence_name) if respond_to?("post_insert")
+            stmt.drop unless stmt.nil?
+          end
+          res
+        end
+
         #--
         # ------------------------------------------------------------------
         # see: abstract/schema_statements.rb
@@ -1400,26 +1364,30 @@ begin
         def type_to_sql(type, limit = nil, precision = nil, scale = nil) # :nodoc:
           @logger.unknown("ODBCAdapter#type_to_sql>") if @@trace
           @logger.unknown("args=[#{type}|#{limit}|#{precision}|#{scale}]") if @@trace
-          native = native_database_types[type]
-          column_type_sql = String.new(native.is_a?(Hash) ? native[:name] : native)
-          if type == :decimal # ignore limit, use precision and scale
-            precision ||= native[:precision]
-            scale ||= native[:scale]
-            if precision
-              if scale
-                column_type_sql << "(#{precision},#{scale})"
+          if native = native_database_types[type]
+            column_type_sql = String.new(native.is_a?(Hash) ? native[:name] : native)
+            if type == :decimal # ignore limit, use precision and scale
+              precision ||= native[:precision]
+              scale ||= native[:scale]
+              if precision
+                if scale
+                  column_type_sql << "(#{precision},#{scale})"
+                else
+                  column_type_sql << "(#{precision})"
+                end
               else
-                column_type_sql << "(#{precision})"
+                raise ArgumentError, "Error adding decimal column: precision cannot be empty if scale if specified" if scale
               end
+              column_type_sql          
             else
-              raise ArgumentError, "Error adding decimal column: precision cannot be empty if scale if specified" if scale
+              # if there's no limit in the type definition, assume that the type 
+              # doesn't support a length qualifier
+              column_type_sql << "(#{limit || native[:limit]})" if native[:limit]
+              column_type_sql        																											
             end
-            column_type_sql          
           else
-            # if there's no limit in the type definition, assume that the type 
-            # doesn't support a length qualifier
-            column_type_sql << "(#{limit || native[:limit]})" if native[:limit]
-            column_type_sql        																											
+            @logger.unknown("Warning! Type #{type} not present in native_database_types") if @@trace
+            column_type_sql = type
           end
         rescue Exception => e
           @logger.unknown("exception=#{e}") if @@trace
@@ -1448,6 +1416,85 @@ begin
         # ==================================================================
 
         private
+        
+        #--
+        # Executes a SELECT statement, returning a hash containing the 
+        # result set rows (key :rows) and the result set column descriptors
+        # (key :column_descriptors) as arrays.
+        def select(sql, name) # :nodoc:
+          scrollableCursor = false
+          limit = 0
+          offset = 0
+          qry = sql.dup
+          
+          # Strip OFFSET and LIMIT from query if present, since ODBC doesn't
+          # support them in a generic form.
+          #
+          # TODO: Translate any OFFSET/LIMIT option to native SQL if DBMS supports it.
+          # This will perform much better than simulating them.
+          if qry =~ /(\bLIMIT\s+)(\d+)/i then
+            if (limit = $2.to_i) == 0 then return Array.new end
+          end
+          
+          if qry =~ /(\bOFFSET\s+)(\d+)/i then offset = $2.to_i end
+          qry.gsub!(/(\bLIMIT\s+\d+|\bOFFSET\s+\d+)/i, '')
+          
+          # It's been assumed that it's quicker to support an offset and/or
+          # limit restriction using a forward-only cursor. A static cursor will 
+          # presumably take a snapshot of the whole result set, whereas when 
+          # using a forward-only cursor we only fetch the first offset+limit 
+          # rows.
+=begin        
+        if offset > 0 then
+          scrollableCursor = true
+          begin
+            # ODBCStatement::fetch_first requires a scrollable cursor
+            @connection.cursortype = ODBC::SQL_CURSOR_STATIC
+          rescue
+            # Assume ODBC driver doesn't support scrollable cursors
+            @connection.cursortype = ODBC::SQL_CURSOR_FORWARD_ONLY
+            scrollableCursor = false
+          end
+        end
+=end
+          
+          # Execute the query
+          begin
+            stmt = @connection.run(qry)
+          rescue Exception => e
+            stmt.drop unless stmt.nil?
+            @logger.unknown("exception=#{e}") if @@trace && name != :force_error
+            raise StatementInvalid, e.message
+          end
+          
+          rColDescs = stmt.columns(true)
+          
+          # Get the rows, handling any offset and/or limit stipulated
+          if scrollableCursor then
+            rRows = nil
+            # scrollableCursor == true => offset > 0
+            if stmt.fetch_scroll(ODBC::SQL_FETCH_ABSOLUTE, offset)
+              rRows = limit > 0 ? stmt.fetch_many(limit) : stmt.fetch_all
+            end
+          else
+            rRows = limit > 0 ? stmt.fetch_many(offset + limit) : stmt.fetch_all
+            # Enforce OFFSET
+            if offset > 0 then 
+              if rRows && rRows.length > offset then
+                rRows.slice!(0, offset)
+              else
+                rRows = nil
+              end
+            end
+            # Enforce LIMIT
+            if limit > 0 && rRows && rRows.length > limit then
+              rRows.slice!(limit..(rRows.length-1))
+            end
+          end
+          
+          stmt.drop
+          {:rows => rRows, :column_descriptors => rColDescs}       
+        end
         
         # Maps a DBMS name to a symbol.
         #
@@ -1496,7 +1543,7 @@ begin
         # the SQL types in the value array are in order of preference.
         def genericTypeToOdbcSqlTypesMap
           map = 
-          {
+            {
             :primary_key => [ODBC::SQL_INTEGER, ODBC::SQL_SMALLINT],
             :string => [ODBC::SQL_VARCHAR],
             :text => [ODBC::SQL_LONGVARCHAR, ODBC::SQL_VARCHAR],
@@ -1506,12 +1553,12 @@ begin
             :datetime => [ODBC::SQL_TYPE_TIMESTAMP, ODBC::SQL_TIMESTAMP],
             :timestamp => [ODBC::SQL_TYPE_TIMESTAMP, ODBC::SQL_TIMESTAMP],
             :time => [ODBC::SQL_TYPE_TIME, ODBC::SQL_TIME, 
-            ODBC::SQL_TYPE_TIMESTAMP, ODBC::SQL_TIMESTAMP],
+              ODBC::SQL_TYPE_TIMESTAMP, ODBC::SQL_TIMESTAMP],
             :date => [ODBC::SQL_TYPE_DATE, ODBC::SQL_DATE,
-            ODBC::SQL_TYPE_TIMESTAMP, ODBC::SQL_TIMESTAMP],
+              ODBC::SQL_TYPE_TIMESTAMP, ODBC::SQL_TIMESTAMP],
             :binary => [ ODBC::SQL_LONGVARBINARY, ODBC::SQL_VARBINARY],          
             :boolean => [ODBC::SQL_BIT, ODBC::SQL_TINYINT, ODBC::SQL_SMALLINT,
-            ODBC::SQL_INTEGER]         
+              ODBC::SQL_INTEGER]         
           }
           
           # MySQL:                       
@@ -1566,7 +1613,7 @@ begin
             # Depending on the column type, the CREATE_PARAMS keywords can
             # include length, precision or scale.
             if (createParams && createParams.strip.length > 0 &&
-                ![:decimal].include?(abstractType))
+                  ![:decimal].include?(abstractType))
               unless @dbmsName == :db2 && ["BLOB", "CLOB"].include?(res[:name])
                 # HACK: 
                 # Omit the :limit option for DB2's CLOB and BLOB types, as the
@@ -1615,11 +1662,11 @@ begin
           case value
           when ODBC::TimeStamp
             res = Time.gm(value.year, value.month, value.day, value.hour, 
-                          value.minute, value.second)
+              value.minute, value.second)
           when ODBC::Time
             now = DateTime.now
             res = Time.gm(now.year, now.month, now.day, value.hour, 
-                          value.minute, value.second)
+              value.minute, value.second)
           when ODBC::Date
             res = Date.new(value.year, value.month, value.day)
           end
@@ -1705,8 +1752,8 @@ begin
       class ODBCColumn < Column #:nodoc:
         
         def initialize (name, tableName, default, odbcSqlType, nativeType, 
-                        null = true, limit = nil, scale = nil, dbExt = nil, 
-                        booleanColSurrogate = nil, nativeTypes = nil)          
+            null = true, limit = nil, scale = nil, dbExt = nil, 
+            booleanColSurrogate = nil, nativeTypes = nil)          
           begin
             require "#{dbExt}"
             self.extend ODBCColumnExt
@@ -1724,7 +1771,7 @@ begin
           # sql_type assigned here excludes any length specification
           @sql_type = @nativeType = String.new(nativeType)
           @type = mapSqlTypeToGenericType(odbcSqlType, @nativeType, @scale, booleanColSurrogate, limit,
-                      nativeTypes)
+            nativeTypes)
           # type_cast uses #type so @type must be set first
           
           # The MS SQL Native Client ODBC driver wraps defaults in parentheses 
@@ -1760,7 +1807,7 @@ begin
         # It also wraps other default values in parentheses.
         def type_cast(value)
           return nil if value.nil? || value =~ 
-						/(^\s*[(]*\s*null\s*[)]*\s*$)|(^\s*truncated\s*$)/i
+            /(^\s*[(]*\s*null\s*[)]*\s*$)|(^\s*truncated\s*$)/i
           super
         end
                 
@@ -1793,17 +1840,17 @@ begin
           when ODBC::SQL_WCHAR, ODBC::SQL_WVARCHAR then :string
           when ODBC::SQL_WLONGVARCHAR then :text            
           when ODBC::SQL_TINYINT, ODBC::SQL_SMALLINT, ODBC::SQL_INTEGER, 
-            ODBC::SQL_BIGINT then :integer            
+              ODBC::SQL_BIGINT then :integer            
           when ODBC::SQL_REAL, ODBC::SQL_FLOAT, ODBC::SQL_DOUBLE then :float
-          # If SQLGetTypeInfo output of ODBC driver doesn't include a mapping 
-          # to a native type from SQL_DECIMAL/SQL_NUMERIC, map to :float
+            # If SQLGetTypeInfo output of ODBC driver doesn't include a mapping 
+            # to a native type from SQL_DECIMAL/SQL_NUMERIC, map to :float
           when ODBC::SQL_DECIMAL, ODBC::SQL_NUMERIC then scale.nil? || scale == 0 ? :integer : 
             nativeTypes[:decimal].nil? ? :float : :decimal             
           when ODBC::SQL_BINARY, ODBC::SQL_VARBINARY, 
-            ODBC::SQL_LONGVARBINARY then :binary            
-          # SQL_DATETIME is an alias for SQL_DATE in ODBC's sql.h & sqlext.h
+              ODBC::SQL_LONGVARBINARY then :binary            
+            # SQL_DATETIME is an alias for SQL_DATE in ODBC's sql.h & sqlext.h
           when ODBC::SQL_DATE, ODBC::SQL_TYPE_DATE, 
-            ODBC::SQL_DATETIME then :date
+              ODBC::SQL_DATETIME then :date
           when ODBC::SQL_TIME, ODBC::SQL_TYPE_TIME then :time
           when ODBC::SQL_TIMESTAMP, ODBC::SQL_TYPE_TIMESTAMP then :timestamp            
           when ODBC::SQL_GUID then :string					            
@@ -1820,7 +1867,7 @@ begin
           # Ignore the ODBC precision of SQL types which don't take
           # an explicit precision when defining a column
           case odbcSqlType
-            when ODBC::SQL_DECIMAL, ODBC::SQL_NUMERIC then odbcPrecision
+          when ODBC::SQL_DECIMAL, ODBC::SQL_NUMERIC then odbcPrecision
           end
         end
 
@@ -1828,7 +1875,7 @@ begin
           # Ignore the ODBC scale of SQL types which don't take
           # an explicit scale when defining a column
           case odbcSqlType
-            when ODBC::SQL_DECIMAL, ODBC::SQL_NUMERIC then odbcScale ? odbcScale : 0
+          when ODBC::SQL_DECIMAL, ODBC::SQL_NUMERIC then odbcScale ? odbcScale : 0
           end
         end
         

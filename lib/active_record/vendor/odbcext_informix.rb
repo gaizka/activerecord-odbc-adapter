@@ -63,10 +63,9 @@ module ODBCExt
     # Informix's DBTIME and DBDATE environment variables should be set to:
     # DBTIME=%Y-%m-%d %H:%M:%S
     # DBDATE=Y4MD-
-    case value
-    when Time, DateTime
+    if value.acts_like?(:time) # Time, DateTime
       %Q!'#{value.strftime("%Y-%m-%d %H:%M:%S.")}'!
-    when Date
+    else # Date
       %Q!'#{value.strftime("%Y-%m-%d")}'!
     end
   end

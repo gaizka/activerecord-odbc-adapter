@@ -82,14 +82,13 @@ module ODBCExt
   
   def quoted_date(value)
     @logger.unknown("ODBCAdapter#quoted_date>") if @trace
-    @logger.unknown("args=[#{value}]") if @trace        
-    case value
+    @logger.unknown("args=[#{value}]") if @trace       
       # Progress v8 doesn't support a datetime or time type,
       # only a date type.
-      when Time, DateTime 
+      if value.acts_like?(:time) # Time, DateTime
         #%Q!{ts '#{value.strftime("%Y-%m-%d %H:%M:%S")}'}!          
         %Q!{d '#{value.strftime("%Y-%m-%d")}'}!
-      when Date
+      else # Date
         %Q!{d '#{value.strftime("%Y-%m-%d")}'}!
       end
   end

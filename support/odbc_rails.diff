@@ -1,21 +1,17 @@
-Index: test/base_test.rb
+Index: base_test.rb
 ===================================================================
---- test/base_test.rb	(revision 1)
-+++ test/base_test.rb	(working copy)
-@@ -319,6 +319,12 @@
-         Time, Topic.find(1).last_read, 
-         "The last_read attribute should be of the Time class"
-       )
+--- base_test.rb	(revision 1)
++++ base_test.rb	(working copy)
+@@ -389,6 +389,8 @@
+     if current_adapter?(:SybaseAdapter, :OracleAdapter)
+       # Sybase ctlib does not (yet?) support the date type; use datetime instead.
+       # Oracle treats all dates/times as Time.
 +    elsif current_adapter?(:ODBCAdapter) && [:ingres, :microsoftsqlserver, :oracle].include?(ActiveRecord::Base.connection.dbmsName)
 +      # Above databases don't have a pure date type. (They have a datetime-like type).
-+      assert_kind_of(
-+        Time, Topic.find(1).last_read, 
-+        "The last_read attribute should be of the Time class"
-+      )    
-     else
        assert_kind_of(
-         Date, Topic.find(1).last_read, 
-@@ -610,7 +616,12 @@
+         Time, Topic.find(1).last_read, 
+         "The last_read attribute should be of the Time class"
+@@ -704,7 +706,12 @@
  
    def test_default_values_on_empty_strings
      topic = Topic.new
@@ -29,7 +25,7 @@ Index: test/base_test.rb
      topic.last_read = nil
  
      topic.save
-@@ -619,7 +630,8 @@
+@@ -713,7 +720,8 @@
      assert_nil topic.last_read
  
      # Sybase adapter does not allow nulls in boolean columns
@@ -39,7 +35,7 @@ Index: test/base_test.rb
        assert topic.approved == false
      else
        assert_nil topic.approved
-@@ -815,6 +827,10 @@
+@@ -941,6 +949,10 @@
    def test_attributes_on_dummy_time
      # Oracle, SQL Server, and Sybase do not have a TIME datatype.
      return true if current_adapter?(:SQLServerAdapter, :OracleAdapter, :SybaseAdapter)
@@ -50,24 +46,7 @@ Index: test/base_test.rb
  
      attributes = {
        "bonus_time" => "5:42:00AM"
-@@ -1014,6 +1030,7 @@
- 
-     assert_kind_of BigDecimal, m1.big_bank_balance
-     assert_equal BigDecimal("1000234000567.95"), m1.big_bank_balance
-+
-   end
- 
-   def test_auto_id
-@@ -1037,7 +1054,7 @@
- 
-   def test_sql_injection_via_find
-     assert_raises(ActiveRecord::RecordNotFound, ActiveRecord::StatementInvalid) do
--      Topic.find("123456 OR id > 0")
-+     Topic.find("123456 OR id > 0")
-     end
-   end
- 
-@@ -1055,8 +1072,11 @@
+@@ -1185,8 +1197,11 @@
      replies = Reply.find(:all, :conditions => [ "id IN (?)", topics(:first).replies.collect(&:id) ])
      assert_equal topics(:first).replies.size, replies.size
  
@@ -81,7 +60,7 @@ Index: test/base_test.rb
    end
  
    MyObject = Struct.new :attribute1, :attribute2
-@@ -1082,7 +1102,12 @@
+@@ -1225,7 +1240,12 @@
    end
  
    def test_quote
@@ -95,285 +74,11 @@ Index: test/base_test.rb
      topic = Topic.create('author_name' => author_name)
      assert_equal author_name, Topic.find(topic.id).author_name
    end
-@@ -1414,6 +1439,8 @@
-     xml = topics(:first).to_xml(:indent => 0, :skip_instruct => true)
-     bonus_time_in_current_timezone = topics(:first).bonus_time.xmlschema
-     written_on_in_current_timezone = topics(:first).written_on.xmlschema
-+    #cb+- Follwoing works
-+    #written_on = topics(:first).written_on
-     last_read_in_current_timezone = topics(:first).last_read.xmlschema
-     assert_equal "<topic>", xml.first(7)
-     assert xml.include?(%(<title>The First Topic</title>))
-@@ -1421,17 +1448,29 @@
-     assert xml.include?(%(<id type="integer">1</id>))
-     assert xml.include?(%(<replies-count type="integer">1</replies-count>))
-     assert xml.include?(%(<written-on type="datetime">#{written_on_in_current_timezone}</written-on>))
-+    #cb+- Following works
-+    #assert xml.include?(%(<written-on type="timestamp">#{written_on}</written-on>))
-     assert xml.include?(%(<content>Have a nice day</content>))
-     assert xml.include?(%(<author-email-address>david@loudthinking.com</author-email-address>))
-     assert xml.match(%(<parent-id type="integer"></parent-id>))
--    if current_adapter?(:SybaseAdapter, :SQLServerAdapter, :OracleAdapter)
-+    # Following databases don't have a true date type, only a composite datetime type
-+    if current_adapter?(:SybaseAdapter, :SQLServerAdapter, :OracleAdapter) or
-+       current_adapter?(:ODBCAdapter) && [:ingres,:oracle,:microsoftsqlserver].include?(ActiveRecord::Base.connection.dbmsName)    
-       assert xml.include?(%(<last-read type="datetime">#{last_read_in_current_timezone}</last-read>))
-     else
-       assert xml.include?(%(<last-read type="date">2004-04-15</last-read>))
-     end
--    # Oracle and DB2 don't have true boolean or time-only fields
-+    # Following databases don't have a true boolean type
-     unless current_adapter?(:OracleAdapter, :DB2Adapter)
--      assert xml.include?(%(<approved type="boolean">false</approved>)), "Approved should be a boolean"
-+      if current_adapter?(:ODBCAdapter) && 
-+           [:ingres,:virtuoso,:oracle,:mysql,:db2,:progress].include?(ActiveRecord::Base.connection.dbmsName)
-+        assert xml.include?(%(<approved type="integer">0</approved>)), "Approved should be an integer"
-+      else
-+        assert xml.include?(%(<approved type="boolean">false</approved>)), "Approved should be a boolean"
-+      end
-+    end
-+    # Oracle and DB2 don't have a true time-only field
-+    unless current_adapter?(:OracleAdapter, :DB2Adapter)
-       assert xml.include?(%(<bonus-time type="datetime">#{bonus_time_in_current_timezone}</bonus-time>))
-     end
-   end
-Index: test/fixtures/db_definitions/db2.sql
+Index: migration_test.rb
 ===================================================================
---- test/fixtures/db_definitions/db2.sql	(revision 1)
-+++ test/fixtures/db_definitions/db2.sql	(working copy)
-@@ -152,7 +152,7 @@
- CREATE TABLE computers (
-   id INT GENERATED BY DEFAULT AS IDENTITY (START WITH 10000),
-   developer INT NOT NULL,
--  extendedWarranty INT NOT NULL
-+  "extendedWarranty" INT NOT NULL
- );
- 
- CREATE TABLE posts (
-@@ -217,7 +217,7 @@
- );
- 
- CREATE TABLE numeric_data (
--  id INT NOT NULL PRIMARY KEY,
-+  id INT GENERATED BY DEFAULT AS IDENTITY (START WITH 10000),
-   bank_balance DECIMAL(10,2),
-   big_bank_balance DECIMAL(15,2),
-   world_population DECIMAL(10),
-Index: test/fixtures/db_definitions/sybase.sql
-===================================================================
---- test/fixtures/db_definitions/sybase.sql	(revision 1)
-+++ test/fixtures/db_definitions/sybase.sql	(working copy)
-@@ -1,16 +1,16 @@
- CREATE TABLE accounts (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   firm_id int NULL,
-   credit_limit int NULL
- )
- 
- CREATE TABLE funny_jokes (
--id numeric(9,0) IDENTITY PRIMARY KEY,
-+id int IDENTITY PRIMARY KEY,
-   name varchar(50) NULL
- )
- 
- CREATE TABLE companies (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   type varchar(50) NULL,
-   ruby_type varchar(50) NULL,
-   firm_id int NULL,
-@@ -21,7 +21,7 @@
- 
- 
- CREATE TABLE topics (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   title varchar(255) NULL,
-   author_name varchar(255) NULL,
-   author_email_address varchar(255) NULL,
-@@ -36,7 +36,7 @@
- )
- 
- CREATE TABLE developers (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   name varchar(100) NULL,
-   salary int default 70000,
-   created_at datetime NULL,
-@@ -44,7 +44,7 @@
- )
- 
- CREATE TABLE projects (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   name varchar(100) NULL,
-   type varchar(255) NULL
- )
-@@ -57,14 +57,14 @@
- )
- 
- CREATE TABLE orders (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   name varchar(100) NULL,
-   billing_customer_id int NULL,
-   shipping_customer_id int NULL
- )
- 
- CREATE TABLE customers (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   name varchar(100) NULL,
-   balance int default 0,
-   address_street varchar(100) NULL,
-@@ -74,7 +74,7 @@
- )
- 
- CREATE TABLE movies (
--  movieid numeric(9,0) IDENTITY PRIMARY KEY,
-+  movieid int IDENTITY PRIMARY KEY,
-   name varchar(100) NULL
- )
- 
-@@ -84,28 +84,28 @@
- )
- 
- CREATE TABLE booleantests (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   value int NULL
- )
- 
- CREATE TABLE auto_id_tests (
--  auto_id numeric(9,0) IDENTITY PRIMARY KEY,
-+  auto_id int IDENTITY PRIMARY KEY,
-   value int NULL
- )
- 
- CREATE TABLE entrants (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   name varchar(255) NOT NULL,
-   course_id int NOT NULL
- )
- 
- CREATE TABLE colnametests (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   [references] int NOT NULL
- )
- 
- CREATE TABLE mixins (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   parent_id int NULL,
-   pos int NULL,
-   created_at datetime NULL,
-@@ -117,30 +117,30 @@
- )
- 
- CREATE TABLE people (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   first_name varchar(40) NULL,
-   lock_version int DEFAULT 0
- )
- 
- CREATE TABLE readers (
--    id numeric(9,0) IDENTITY PRIMARY KEY,
-+    id int IDENTITY PRIMARY KEY,
-     post_id int NOT NULL,
-     person_id int NOT NULL
- )
- 
- CREATE TABLE binaries (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   data image NULL
- )
- 
- CREATE TABLE computers (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   developer int NOT NULL,
-   extendedWarranty int NOT NULL
- )
- 
- CREATE TABLE posts (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   author_id int NULL,
-   title varchar(255) NOT NULL,
-   body varchar(2048) NOT NULL,
-@@ -148,25 +148,25 @@
- )
- 
- CREATE TABLE comments (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   post_id int NOT NULL,
-   body varchar(2048) NOT NULL,
-   type varchar(255) NOT NULL
- )
- 
- CREATE TABLE authors (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   name varchar(255) NOT NULL
- )
- 
- CREATE TABLE tasks (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   starting datetime NULL,
-   ending datetime NULL
- )
- 
- CREATE TABLE categories (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   name varchar(255) NOT NULL,
-   type varchar(255) NOT NULL
- )
-@@ -177,7 +177,7 @@
- )
- 
- CREATE TABLE fk_test_has_pk (
--  id numeric(9,0) IDENTITY PRIMARY KEY
-+  id int IDENTITY PRIMARY KEY
- )
- 
- CREATE TABLE fk_test_has_fk (
-@@ -189,20 +189,20 @@
- 
- 
- CREATE TABLE keyboards (
--  key_number numeric(9,0) IDENTITY PRIMARY KEY,
-+  key_number int IDENTITY PRIMARY KEY,
-   name varchar(50) NULL
- )
- 
- --This table has an altered lock_version column name.
- CREATE TABLE legacy_things (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   tps_report_number int default NULL,
-   version int default 0
- )
- 
- 
- CREATE TABLE numeric_data (
--  id numeric(9,0) IDENTITY PRIMARY KEY,
-+  id int IDENTITY PRIMARY KEY,
-   bank_balance numeric(10,2),
-   big_bank_balance numeric(15,2),
-   world_population numeric(10),
-Index: test/migration_test.rb
-===================================================================
---- test/migration_test.rb	(revision 1)
-+++ test/migration_test.rb	(working copy)
-@@ -50,8 +50,15 @@
+--- migration_test.rb	(revision 1)
++++ migration_test.rb	(working copy)
+@@ -52,8 +52,15 @@
      end
  
      def test_add_index
@@ -391,37 +96,37 @@ Index: test/migration_test.rb
        Person.connection.add_column "people", "key", :string, :limit => 100
        Person.connection.add_column "people", "administrator", :boolean
  
-@@ -59,7 +66,8 @@
-       assert_nothing_raised { Person.connection.remove_index("people", "last_name") }
+@@ -62,7 +69,8 @@
  
        # Orcl nds shrt indx nms.  Sybs 2.
--      unless current_adapter?(:OracleAdapter, :SybaseAdapter)
-+      unless current_adapter?(:OracleAdapter, :SybaseAdapter) ||
+       # OpenBase does not have named indexes.  You must specify a single column name
+-      unless current_adapter?(:OracleAdapter, :SybaseAdapter, :OpenBaseAdapter)
++      unless current_adapter?(:OracleAdapter, :SybaseAdapter, :OpenBaseAdapter) ||
 +             current_adapter?(:ODBCAdapter) && [:sybase, :oracle].include?(ActiveRecord::Base.connection.dbmsName)
          assert_nothing_raised { Person.connection.add_index("people", ["last_name", "first_name"]) }
          assert_nothing_raised { Person.connection.remove_index("people", :column => ["last_name", "first_name"]) }
          assert_nothing_raised { Person.connection.add_index("people", ["last_name", "first_name"]) }
-@@ -76,7 +84,8 @@
-       assert_nothing_raised { Person.connection.remove_index("people", :name => "key_idx", :unique => true) }
- 
+@@ -83,7 +91,8 @@
+       
        # Sybase adapter does not support indexes on :boolean columns
--      unless current_adapter?(:SybaseAdapter)
-+      unless current_adapter?(:SybaseAdapter) ||
+       # OpenBase does not have named indexes.  You must specify a single column
+-      unless current_adapter?(:SybaseAdapter, :OpenBaseAdapter)
++      unless current_adapter?(:SybaseAdapter, :OpenBaseAdapter) ||
 +             current_adapter?(:ODBCAdapter) && ActiveRecord::Base.connection.dbmsName == :sybase
          assert_nothing_raised { Person.connection.add_index("people", %w(last_name first_name administrator), :name => "named_admin") }
          assert_nothing_raised { Person.connection.remove_index("people", :name => "named_admin") }
        end
-@@ -170,7 +179,8 @@
-     # SQL Server and Sybase will not allow you to add a NOT NULL column
-     # to a table without specifying a default value, so the
-     # following test must be skipped
--    unless current_adapter?(:SQLServerAdapter, :SybaseAdapter)
-+    unless current_adapter?(:SQLServerAdapter, :SybaseAdapter) ||
+@@ -182,7 +191,8 @@
+ 
+     # SQL Server, Sybase, and SQLite3 will not allow you to add a NOT NULL
+     # column to a table without a default value.
+-    unless current_adapter?(:SQLServerAdapter, :SybaseAdapter, :SQLiteAdapter)
++    unless current_adapter?(:SQLServerAdapter, :SybaseAdapter, :SQLiteAdapter) ||
 +           current_adapter?(:ODBCAdapter) && [:microsoftsqlserver, :sybase].include?(ActiveRecord::Base.connection.dbmsName)
        def test_add_column_not_null_without_default
          Person.connection.create_table :testings do |t|
            t.column :foo, :string
-@@ -194,7 +204,13 @@
+@@ -206,7 +216,13 @@
        Person.connection.enable_identity_insert("testings", true) if current_adapter?(:SybaseAdapter)
        Person.connection.execute "insert into testings (#{con.quote_column_name('id')}, #{con.quote_column_name('foo')}) values (1, 'hello')"
        Person.connection.enable_identity_insert("testings", false) if current_adapter?(:SybaseAdapter)
@@ -431,12 +136,12 @@ Index: test/migration_test.rb
 +        # then 'WITH DEFAULT' must also be specified *without* a default value.        
 +        assert_nothing_raised {Person.connection.add_column :testings, :bar, :string, :null => false}
 +      else     
-+        assert_nothing_raised {Person.connection.add_column :testings, :bar, :string, :null => false, :default => "default"}
++        assert_nothing_raised {Person.connection.add_column :testings, :bar, :string, :null => false, :default => "default" }
 +      end
  
        assert_raises(ActiveRecord::StatementInvalid) do
-         Person.connection.execute "insert into testings (#{con.quote_column_name('id')}, #{con.quote_column_name('foo')}, #{con.quote_column_name('bar')}) values (2, 'hello', NULL)"
-@@ -282,8 +298,10 @@
+         unless current_adapter?(:OpenBaseAdapter)
+@@ -310,8 +326,10 @@
        assert_equal Fixnum, bob.age.class
        assert_equal Time, bob.birthday.class
  
@@ -445,11 +150,11 @@ Index: test/migration_test.rb
 +      if current_adapter?(:SQLServerAdapter, :OracleAdapter, :SybaseAdapter) ||
 +         (current_adapter?(:ODBCAdapter) && 
 +         [:ingres, :oracle, :microsoftsqlserver].include?(ActiveRecord::Base.connection.dbmsName))
-+         # SQL Server, Sybase, Oracle and Ingres don't differentiate between date/time
++        # SQL Server, Sybase, Oracle and Ingres don't differentiate between date/time
          assert_equal Time, bob.favorite_day.class
        else
          assert_equal Date, bob.favorite_day.class
-@@ -321,145 +339,193 @@
+@@ -373,27 +391,33 @@
        assert !Person.column_methods_hash.include?(:last_name)
      end
  
@@ -464,9 +169,11 @@ Index: test/migration_test.rb
  
 -      begin
 -        Person.connection.add_column "people", "girlfriend", :string
+-        Person.reset_column_information
 -        Person.create :girlfriend => 'bobette'
 +        begin
 +          Person.connection.add_column "people", "girlfriend", :string
++          Person.reset_column_information
 +          Person.create :girlfriend => 'bobette'
  
 -        Person.connection.rename_column "people", "girlfriend", "exgirlfriend"
@@ -490,140 +197,67 @@ Index: test/migration_test.rb
 -
      end
  
--    def test_rename_column_using_symbol_arguments
--      begin
--        Person.connection.rename_column :people, :first_name, :nick_name
--        Person.reset_column_information
--        assert Person.column_names.include?("nick_name")
--      ensure
--        Person.connection.remove_column("people","nick_name")
--        Person.connection.add_column("people","first_name", :string)
 +    # Ingres and Virtuoso don't support renaming of columns. Skip test.
 +    unless current_adapter?(:ODBCAdapter) && [:ingres, :virtuoso].include?(ActiveRecord::Base.connection.dbmsName)    
-+      def test_rename_column_using_symbol_arguments
-+        begin
-+          Person.connection.rename_column :people, :first_name, :nick_name
-+          Person.reset_column_information
-+          assert Person.column_names.include?("nick_name")
-+        ensure
-+          Person.connection.remove_column("people","nick_name")
-+          Person.connection.add_column("people","first_name", :string)
-+        end
+     def test_rename_column_using_symbol_arguments
+       begin
+         names_before = Person.find(:all).map(&:first_name)
+@@ -406,7 +430,9 @@
+         Person.connection.add_column("people","first_name", :string)
        end
      end
++    end
  
--    def test_rename_column
--      begin
--        Person.connection.rename_column "people", "first_name", "nick_name"
--        Person.reset_column_information
--        assert Person.column_names.include?("nick_name")
--      ensure
--        Person.connection.remove_column("people","nick_name")
--        Person.connection.add_column("people","first_name", :string)
 +    unless current_adapter?(:ODBCAdapter) && [:ingres, :virtuoso].include?(ActiveRecord::Base.connection.dbmsName)    
-+      def test_rename_column
-+        begin
-+          Person.connection.rename_column "people", "first_name", "nick_name"
-+          Person.reset_column_information
-+          assert Person.column_names.include?("nick_name")
-+        ensure
-+          Person.connection.remove_column("people","nick_name")
-+          Person.connection.add_column("people","first_name", :string)
-+        end
+     def test_rename_column
+       begin
+         names_before = Person.find(:all).map(&:first_name)
+@@ -419,6 +445,7 @@
+         Person.connection.add_column("people","first_name", :string)
+       end
+     end
++    end
+ 
+     def test_rename_column_with_sql_reserved_word
+       begin
+@@ -441,6 +468,8 @@
        end
      end
  
--    def test_rename_table
--      begin
--        ActiveRecord::Base.connection.create_table :octopuses do |t|
--          t.column :url, :string
--        end
--        ActiveRecord::Base.connection.rename_table :octopuses, :octopi
 +    # Ingres doesn't support renaming of tables. Skip test.
 +    unless current_adapter?(:ODBCAdapter) && ActiveRecord::Base.connection.dbmsName == :ingres
-+      def test_rename_table
-+        begin
-+          ActiveRecord::Base.connection.create_table :octopuses do |t|
-+            t.column :url, :string
-+          end
-+          ActiveRecord::Base.connection.rename_table :octopuses, :octopi
- 
--        # Using explicit id in insert for compatibility across all databases
--        con = ActiveRecord::Base.connection     
--        con.enable_identity_insert("octopi", true) if current_adapter?(:SybaseAdapter)
--        assert_nothing_raised { con.execute "INSERT INTO octopi (#{con.quote_column_name('id')}, #{con.quote_column_name('url')}) VALUES (1, 'http://www.foreverflying.com/octopus-black7.jpg')" }
--        con.enable_identity_insert("octopi", false) if current_adapter?(:SybaseAdapter)
-+          # Using explicit id in insert for compatibility across all databases
-+          con = ActiveRecord::Base.connection     
-+          con.enable_identity_insert("octopi", true) if current_adapter?(:SybaseAdapter)
-+          assert_nothing_raised { con.execute "INSERT INTO octopi (#{con.quote_column_name('id')}, #{con.quote_column_name('url')}) VALUES (1, 'http://www.foreverflying.com/octopus-black7.jpg')" }
-+          con.enable_identity_insert("octopi", false) if current_adapter?(:SybaseAdapter)
- 
--        assert_equal 'http://www.foreverflying.com/octopus-black7.jpg', ActiveRecord::Base.connection.select_value("SELECT url FROM octopi WHERE id=1")
-+          assert_equal 'http://www.foreverflying.com/octopus-black7.jpg', ActiveRecord::Base.connection.select_value("SELECT url FROM octopi WHERE id=1")
- 
--      ensure
--        ActiveRecord::Base.connection.drop_table :octopuses rescue nil
--        ActiveRecord::Base.connection.drop_table :octopi rescue nil
-+        ensure
-+          ActiveRecord::Base.connection.drop_table :octopuses rescue nil
-+          ActiveRecord::Base.connection.drop_table :octopi rescue nil
-+        end
+     def test_rename_table
+       begin
+         ActiveRecord::Base.connection.create_table :octopuses do |t|
+@@ -461,6 +490,7 @@
+         ActiveRecord::Base.connection.drop_table :octopi rescue nil
        end
      end
++    end
+     
+     def test_change_column_nullability
+       Person.delete_all 
+@@ -475,6 +505,8 @@
+       assert Person.columns_hash["funny"].null, "Column 'funny' must allow nulls again at this point"
+     end
  
--    def test_rename_table_with_an_index
--      begin
--        ActiveRecord::Base.connection.create_table :octopuses do |t|
--          t.column :url, :string
--        end
--        ActiveRecord::Base.connection.add_index :octopuses, :url
 +    # Ingres doesn't support renaming of tables. Skip test.
 +    unless current_adapter?(:ODBCAdapter) && ActiveRecord::Base.connection.dbmsName == :ingres
-+      def test_rename_table_with_an_index
-+        begin
-+          ActiveRecord::Base.connection.create_table :octopuses do |t|
-+            t.column :url, :string
-+          end
-+          ActiveRecord::Base.connection.add_index :octopuses, :url
-         
--        ActiveRecord::Base.connection.rename_table :octopuses, :octopi
-+          ActiveRecord::Base.connection.rename_table :octopuses, :octopi
- 
--        # Using explicit id in insert for compatibility across all databases
--        con = ActiveRecord::Base.connection     
--        con.enable_identity_insert("octopi", true) if current_adapter?(:SybaseAdapter)
--        assert_nothing_raised { con.execute "INSERT INTO octopi (#{con.quote_column_name('id')}, #{con.quote_column_name('url')}) VALUES (1, 'http://www.foreverflying.com/octopus-black7.jpg')" }
--        con.enable_identity_insert("octopi", false) if current_adapter?(:SybaseAdapter)
-+          # Using explicit id in insert for compatibility across all databases
-+          con = ActiveRecord::Base.connection     
-+          con.enable_identity_insert("octopi", true) if current_adapter?(:SybaseAdapter)
-+          assert_nothing_raised { con.execute "INSERT INTO octopi (#{con.quote_column_name('id')}, #{con.quote_column_name('url')}) VALUES (1, 'http://www.foreverflying.com/octopus-black7.jpg')" }
-+          con.enable_identity_insert("octopi", false) if current_adapter?(:SybaseAdapter)
- 
--        assert_equal 'http://www.foreverflying.com/octopus-black7.jpg', ActiveRecord::Base.connection.select_value("SELECT url FROM octopi WHERE id=1")
--        assert ActiveRecord::Base.connection.indexes(:octopi).first.columns.include?("url")
--      ensure
--        ActiveRecord::Base.connection.drop_table :octopuses rescue nil
--        ActiveRecord::Base.connection.drop_table :octopi rescue nil
-+          assert_equal 'http://www.foreverflying.com/octopus-black7.jpg', ActiveRecord::Base.connection.select_value("SELECT url FROM octopi WHERE id=1")
-+          assert ActiveRecord::Base.connection.indexes(:octopi).first.columns.include?("url")
-+        ensure
-+          ActiveRecord::Base.connection.drop_table :octopuses rescue nil
-+          ActiveRecord::Base.connection.drop_table :octopi rescue nil
-+        end
+     def test_rename_table_with_an_index
+       begin
+         ActiveRecord::Base.connection.create_table :octopuses do |t|
+@@ -497,18 +529,34 @@
+         ActiveRecord::Base.connection.drop_table :octopi rescue nil
        end
      end
++    end
  
--    def test_change_column
--      Person.connection.add_column 'people', 'age', :integer
--      old_columns = Person.connection.columns(Person.table_name, "#{name} Columns")
--      assert old_columns.find { |c| c.name == 'age' and c.type == :integer }
 +    # Virtuoso disallows virtually all column type conversions.
 +    # Conversion between any of the native types used by the ActiveRecord generic types is not allowed.
 +    # Skip the test.
 +    unless current_adapter?(:ODBCAdapter) && [:virtuoso].include?(ActiveRecord::Base.connection.dbmsName)    
-+      def test_change_column
+     def test_change_column
+-      Person.connection.add_column 'people', 'age', :integer
 +        #Ingres doesn't support changing an integer column to varchar/text.
 +        if current_adapter?(:ODBCAdapter) && [:ingres].include?(ActiveRecord::Base.connection.dbmsName)
 +          initial_type = :integer
@@ -634,120 +268,87 @@ Index: test/migration_test.rb
 +        end
 +        
 +        Person.connection.add_column 'people', 'age', initial_type
-+        old_columns = Person.connection.columns(Person.table_name, "#{name} Columns")
-+        assert old_columns.find { |c| c.name == 'age' and c.type == initial_type }
+       old_columns = Person.connection.columns(Person.table_name, "#{name} Columns")
+-      assert old_columns.find { |c| c.name == 'age' and c.type == :integer }
++      assert old_columns.find { |c| c.name == 'age' and c.type == initial_type }
  
 -      assert_nothing_raised { Person.connection.change_column "people", "age", :string }
-+        assert_nothing_raised { Person.connection.change_column "people", "age", new_type }
++      assert_nothing_raised { Person.connection.change_column "people", "age", new_type }
  
--      new_columns = Person.connection.columns(Person.table_name, "#{name} Columns")
+       new_columns = Person.connection.columns(Person.table_name, "#{name} Columns")
 -      assert_nil new_columns.find { |c| c.name == 'age' and c.type == :integer }
 -      assert new_columns.find { |c| c.name == 'age' and c.type == :string }
-+        new_columns = Person.connection.columns(Person.table_name, "#{name} Columns")
-+        assert_nil new_columns.find { |c| c.name == 'age' and c.type == initial_type }
-+        assert new_columns.find { |c| c.name == 'age' and c.type == new_type }
++      assert_nil new_columns.find { |c| c.name == 'age' and c.type == initial_type }
++      assert new_columns.find { |c| c.name == 'age' and c.type == new_type }
  
--      old_columns = Topic.connection.columns(Topic.table_name, "#{name} Columns")
--      assert old_columns.find { |c| c.name == 'approved' and c.type == :boolean and c.default == true }
--      assert_nothing_raised { Topic.connection.change_column :topics, :approved, :boolean, :default => false }
--      new_columns = Topic.connection.columns(Topic.table_name, "#{name} Columns")     
--      assert_nil new_columns.find { |c| c.name == 'approved' and c.type == :boolean and c.default == true }
--      assert new_columns.find { |c| c.name == 'approved' and c.type == :boolean and c.default == false }
--      assert_nothing_raised { Topic.connection.change_column :topics, :approved, :boolean, :default => true }
-+        # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
-+        unless current_adapter?(:ODBCAdapter) && [:sybase].include?(ActiveRecord::Base.connection.dbmsName)    
-+          old_columns = Topic.connection.columns(Topic.table_name, "#{name} Columns")
-+          assert old_columns.find { |c| c.name == 'approved' and c.type == :boolean and c.default == true }
-+          assert_nothing_raised { Topic.connection.change_column :topics, :approved, :boolean, :default => false }
-+          new_columns = Topic.connection.columns(Topic.table_name, "#{name} Columns")     
-+          assert_nil new_columns.find { |c| c.name == 'approved' and c.type == :boolean and c.default == true }
-+          assert new_columns.find { |c| c.name == 'approved' and c.type == :boolean and c.default == false }
-+          assert_nothing_raised { Topic.connection.change_column :topics, :approved, :boolean, :default => true }
-+        end
++      # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
++      unless current_adapter?(:ODBCAdapter) && [:sybase].include?(ActiveRecord::Base.connection.dbmsName)    
+       old_columns = Topic.connection.columns(Topic.table_name, "#{name} Columns")
+       assert old_columns.find { |c| c.name == 'approved' and c.type == :boolean and c.default == true }
+       assert_nothing_raised { Topic.connection.change_column :topics, :approved, :boolean, :default => false }
+@@ -516,8 +564,12 @@
+       assert_nil new_columns.find { |c| c.name == 'approved' and c.type == :boolean and c.default == true }
+       assert new_columns.find { |c| c.name == 'approved' and c.type == :boolean and c.default == false }
+       assert_nothing_raised { Topic.connection.change_column :topics, :approved, :boolean, :default => true }
++      end
 +      end
      end
      
--    def test_change_column_with_nil_default
--      Person.connection.add_column "people", "contributor", :boolean, :default => true
--      Person.reset_column_information
--      assert Person.new.contributor?
 +    # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
 +    unless current_adapter?(:ODBCAdapter) && [:ingres, :sybase].include?(ActiveRecord::Base.connection.dbmsName)    
-+      def test_change_column_with_nil_default
-+        Person.connection.add_column "people", "contributor", :boolean, :default => true
-+        Person.reset_column_information
-+        assert Person.new.contributor?
-       
--      assert_nothing_raised { Person.connection.change_column "people", "contributor", :boolean, :default => nil }
--      Person.reset_column_information
--      assert !Person.new.contributor?
--      assert_nil Person.new.contributor
-+        assert_nothing_raised { Person.connection.change_column "people", "contributor", :boolean, :default => nil }
-+        Person.reset_column_information
-+        a = Person.new.contributor
-+        assert !Person.new.contributor?
-+        assert_nil Person.new.contributor
-+      ensure
-+        Person.connection.remove_column "people", "contributor"
-+      end
+     def test_change_column_with_nil_default
+       Person.connection.add_column "people", "contributor", :boolean, :default => true
+       Person.reset_column_information
+@@ -530,7 +582,11 @@
+     ensure
+       Person.connection.remove_column("people", "contributor") rescue nil
      end
++    end
  
--    def test_change_column_with_new_default
--      Person.connection.add_column "people", "administrator", :boolean, :default => true
--      Person.reset_column_information
--      assert Person.new.administrator?
 +    # Ingres doesn't support ALTER TABLE ADD COLUMN WITH NULL WITH DEFAULT.
 +    # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
 +    unless current_adapter?(:ODBCAdapter) && [:ingres, :sybase].include?(ActiveRecord::Base.connection.dbmsName)    
-+      def test_change_column_with_new_default
-+        Person.connection.add_column "people", "administrator", :boolean, :default => true
-+        Person.reset_column_information
-+        assert Person.new.administrator?
- 
--      assert_nothing_raised { Person.connection.change_column "people", "administrator", :boolean, :default => false }
--      Person.reset_column_information
--      assert !Person.new.administrator?
-+        assert_nothing_raised { Person.connection.change_column "people", "administrator", :boolean, :default => false }
-+        Person.reset_column_information
-+        assert !Person.new.administrator?
-+      end
+     def test_change_column_with_new_default
+       Person.connection.add_column "people", "administrator", :boolean, :default => true
+       Person.reset_column_information
+@@ -542,12 +598,16 @@
+     ensure
+       Person.connection.remove_column("people", "administrator") rescue nil
      end
-     
--    def test_change_column_default
--      Person.connection.change_column_default "people", "first_name", "Tester"
--      Person.reset_column_information
--      assert_equal "Tester", Person.new.first_name
-+    # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
-+    unless current_adapter?(:ODBCAdapter) && [:sybase].include?(ActiveRecord::Base.connection.dbmsName)    
-+      def test_change_column_default
-+        Person.connection.change_column_default "people", "first_name", "Tester"
-+        Person.reset_column_information
-+        assert_equal "Tester", Person.new.first_name
-+      end
-     end
-+        
-+    # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
-+    unless current_adapter?(:ODBCAdapter) && [:sybase].include?(ActiveRecord::Base.connection.dbmsName)    
-+      def test_change_column_default_to_null
-+        Person.connection.change_column_default "people", "first_name", nil
-+        Person.reset_column_information
-+        assert_nil Person.new.first_name
-+      end
 +    end
      
--    def test_change_column_default_to_null
--      Person.connection.change_column_default "people", "first_name", nil
--      Person.reset_column_information
--      assert_nil Person.new.first_name
--    end
--
++    # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
++    unless current_adapter?(:ODBCAdapter) && [:sybase].include?(ActiveRecord::Base.connection.dbmsName)    
+     def test_change_column_default
+       Person.connection.change_column_default "people", "first_name", "Tester"
+       Person.reset_column_information
+       assert_equal "Tester", Person.new.first_name
+     end
++    end
+ 
+     def test_change_column_quotes_column_names
+       Person.connection.create_table :testings do |t|
+@@ -561,11 +621,14 @@
+       Person.connection.drop_table :testings rescue nil
+     end
+ 
++    # Sybase ASE's ALTER TABLE doesn't support altering a column's DEFAULT definition.
++    unless current_adapter?(:ODBCAdapter) && [:sybase].include?(ActiveRecord::Base.connection.dbmsName)    
+     def test_change_column_default_to_null
+       Person.connection.change_column_default "people", "first_name", nil
+       Person.reset_column_information
+       assert_nil Person.new.first_name
+     end
++    end
+ 
      def test_add_table
        assert !Reminder.table_exists?
+@@ -797,8 +860,19 @@
+       Person.connection.drop_table :binary_testings rescue nil
  
-@@ -692,9 +758,20 @@
-         Person.connection.drop_table :binary_testings rescue nil
- 
-         assert_nothing_raised {
+       assert_nothing_raised {
+-        Person.connection.create_table :binary_testings do |t|
+-          t.column "data", :binary, :null => false
 +        if current_adapter?(:ODBCAdapter) && [:informix, :ingres].include?(ActiveRecord::Base.connection.dbmsName)
 +          # Specifying a non-null default generates the following error:
 +          # Informix:
@@ -758,19 +359,9 @@ Index: test/migration_test.rb
 +            t.column "data", :binary
 +          end
 +        else
-           Person.connection.create_table :binary_testings do |t|
-             t.column "data", :binary, :default => "", :null => false
-           end
-+        end
-         }
- 
-         columns = Person.connection.columns(:binary_testings)
-@@ -702,6 +779,8 @@
- 
-         if current_adapter?(:OracleAdapter)
-           assert_equal "empty_blob()", data_column.default
-+        elsif current_adapter?(:ODBCAdapter) && [:informix, :ingres].include?(ActiveRecord::Base.connection.dbmsName)        
-+          assert_nil data_column.default
-         else
-           assert_equal "", data_column.default
++          Person.connection.create_table :binary_testings do |t|
++            t.column "data", :binary, :null => false
++          end
          end
+       }
+ 

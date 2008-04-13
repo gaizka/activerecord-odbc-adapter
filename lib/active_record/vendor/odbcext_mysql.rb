@@ -150,6 +150,16 @@ module ODBCExt
     end
     super(options)
   end
+  
+  def disable_referential_integrity(&block) #:nodoc:
+    old = select_value("SELECT @@FOREIGN_KEY_CHECKS")
+    begin
+      update("SET FOREIGN_KEY_CHECKS = 0")
+      yield
+    ensure
+      update("SET FOREIGN_KEY_CHECKS = #{old}")
+    end
+  end
           
   def structure_dump
     @logger.unknown("ODBCAdapter#structure_dump>") if @trace

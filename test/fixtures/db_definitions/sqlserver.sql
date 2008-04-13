@@ -229,6 +229,15 @@ CREATE TABLE numeric_data (
   decimal_number_with_default decimal(3,2) DEFAULT 2.78
 );
 
+CREATE TABLE mixed_case_monkeys (
+  monkeyID int NOT NULL IDENTITY(1, 1),
+  fleaCount int default NULL
+);
+
+CREATE TABLE minimalistics (
+  id int NOT NULL IDENTITY(1, 1)
+);
+
 CREATE TABLE [order] (
   id int NOT NULL IDENTITY(1, 1) PRIMARY KEY,
   color varchar(255),

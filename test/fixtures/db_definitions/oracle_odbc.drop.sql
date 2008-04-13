@@ -31,6 +31,8 @@ drop table fk_test_has_fk;
 drop table keyboards;
 drop table legacy_things;
 drop table numeric_data;
+drop table mixed_case_monkeys;
+drop table minimalistics;
 drop table test_oracle_defaults;
 
 drop sequence accounts_seq;
@@ -65,4 +67,6 @@ drop sequence fk_test_has_fk_seq;
 drop sequence keyboards_seq;
 drop sequence legacy_things_seq;
 drop sequence numeric_data_seq;
+drop sequence mixed_case_monkeys_seq;
+drop sequence minimalistics_seq;
 drop sequence test_oracle_defaults_seq;

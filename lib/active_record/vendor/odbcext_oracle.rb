@@ -73,11 +73,10 @@ module ODBCExt
     @logger.unknown("ODBCAdapter#quoted_date>") if @trace
     # Ideally, we'd return an ODBC date or timestamp literal escape 
     # sequence, but not all ODBC drivers support them.
-    case value
-    when Time, DateTime
+    if value.acts_like?(:time) # Time, DateTime
       #%Q!{ts '#{value.strftime("%Y-%m-%d %H:%M:%S")}'}!
       "to_timestamp(\'#{value.strftime("%Y-%m-%d %H:%M:%S")}\', \'YYYY-MM-DD HH24:MI:SS\')"
-    when Date
+    else # Date
       #%Q!{d '#{value.strftime("%Y-%m-%d")}'}!
       "to_timestamp(\'#{value.strftime("%Y-%m-%d")}\', \'YYYY-MM-DD\')"
     end
@@ -121,7 +120,7 @@ module ODBCExt
   
   def remove_column(table_name, column_name)
     @logger.unknown("ODBCAdapter#remove_column>") if @trace
-    execute "ALTER TABLE #{table_name} DROP COLUMN #{quote_column_name(column_name)}"
+    execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise

@@ -33,8 +33,6 @@
 #   - If no ActiveRecord gems are found, looks for a manually installed 
 #     version of ActiveRecord in site_ruby.
 # * Copies the essential ODBC adapter files into the ActiveRecord tree.
-# * Makes a backup copy of active_record.rb and patches the original to 
-#   include 'odbc' in the list of recognized Rails adapters.
 # * Checks if Ruby ODBC Bridge is installed.
 
 require 'rbconfig'
@@ -81,7 +79,7 @@ if !$activeRecDir
   if $rubyGems
     puts "Looking for installed ActiveRecord gems."
     ar = Dir.entries(File.join(Gem::dir,"gems")).find_all { |g| 
-      g =~ /^activerecord/i 
+      g =~ /^activerecord-\d+\.\d+\.\d+$/i 
     }
     if !ar.empty?
       # Sort to ensure we install the ODBC adapter into the latest ActiveRecord
@@ -167,41 +165,6 @@ Find.find(".") { |f|
 }
 puts "-"*60
 puts 
-
-puts "Checking RAILS_CONNECTION_ADAPTERS (active_record.rb) includes odbc."
-Dir[File.join($activeRecDir, "..", "active_record.rb")].each do |path|
-  Dir.chdir(File.dirname(path)) do |d|
-    odbc_added = false
-    t = Time.now
-    mod_stamp = "_#{t.year}_#{t.month}_#{t.day}"
-    tmpFileName = "tmp#{mod_stamp}"
-
-    File.open(File.basename(path)) do |f|
-      tmp = File.open(tmpFileName, "w+")
-      f.each_line() do |line|
-        if line =~ /\s*RAILS_CONNECTION_ADAPTERS\s*=\s*.*s*\(\s*(.*\S)(\s*\))/
-          md1 = $1
-          md2 = $2
-          if md1 !~ /odbc/
-	    odbc_added = true
-            line.sub!(/\)/, md2[0,1] == " " ? "odbc )" : " odbc )")
-	  end
-        end
-        tmp.puts(line)			
-      end
-      tmp.close
-    end
-	  
-    if odbc_added
-      puts "Copying active_record.rb to active_record.rb" + mod_stamp
-      puts "Patching active_record.rb."
-      FileUtils.mv("active_record.rb", "active_record.rb" + mod_stamp)
-      FileUtils.mv(tmpFileName, "active_record.rb")
-    else
-      FileUtils.rm(tmpFileName)
-    end
-  end
-end
 
 # Check Ruby ODBC Bridge is installed
 

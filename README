@@ -5,7 +5,21 @@
 
 == Status
 
-23-Feb-2007
+<b>28-Mar-2008</b>
+
+The adapter has been updated to support Rails 2.0.2 / ActiveRecord 2.0.2
+The new adapter (v2.0) is not recommended for use with earlier releases of
+Rails or ActiveRecord.
+
+* For Rails 2.0.2 / ActiveRecord 2.0.2 or later, use odbc-rails v2.0
+* For Rails 1.2.x / ActiveRecord 1.15.x, use odbc-rails v1.5
+* For Rails 1.1.x / ActiveRecord 1.14.x, use odbc-rails v1.3
+
+The configuration instructions for v1.4 or earlier differ slightly from those
+included here for v2.0. Please refer to the documentation packaged with the
+respective adapter when using the previous releases.
+
+<b>23-Feb-2007</b>
 
 The adapter has been updated to support Rails 1.2.x / ActiveRecord 1.15.x.
 The new adapter (v1.4) is not recommended for use with Rails 1.1 / ActiveRecord
@@ -15,7 +29,7 @@ The driver now supports the new ActiveRecord :decimal type and an
 :emulate_booleans connection option. See http://odbc-rails.rubyforge.org for
 more information about this option.
 
-09-Jan-2007
+<b>09-Jan-2007</b>
 
 The adapter accompanying this note is a Generic ODBC Adapter for Ruby on Rails
 being developed by <B>OpenLink&nbsp;Software</B>[http://www.openlinksw.com].
@@ -74,28 +88,14 @@ lib/ contains the files which constitute the new ODBC adapter.
 
 test/ contains the fixture definitions for testing the adapter.
 
-support/odbc_rails.diff contains some patches to ActiveRecord.
-
-These will be submitted to the ActiveRecord source maintainer in
-due course, if we request that the OpenLink ODBC Adapter for Ruby
-on Rails be added to the ActiveRecord source distribution to accompany
-the existing Rails adapters.
-
-Only one of the patches is really necessary. In adapter release 1.3 or
-earlier, the diff file includes a patch to:
-
-    lib/active_record/connection_adapters/abstract/schema_definitions.rb
-
-This fixes what appears to be a bug in Active Record 1.14. The patch
-is unnecessary for AR 1.15 and consequently not included in adapter
-release 1.4
+support/odbc_rails.diff contains some patches to ActiveRecord tests.
 
 The patches to base_test.rb and migration_test.rb are not essential.
 However, they modify or bypass certain tests to cope with limitations
 of particular databases. Other developers have previously modified
 the tests similarly to cope with limitations of other Rails-supported
 databases. The patched versions of files touched by odbc_rails.diff can
-be found in support/lib and support/test.
+be found in support/test.
 
 == Installation
 
@@ -106,21 +106,9 @@ available system-wide or just within a particular Rails project.
 
 === Installation as a Gem
 
-Install the odbc-rails gem by running:
+* Install the odbc-rails gem by running:
 
-    # gem install -r odbc-rails --include-dependencies
-
-Enable loading of the adapter by editing your Rails project's
-config/environment.rb script: 
-
-* Add a +require+ to your config/environment.rb immediately after the line
-
-       require File.join(File.dirname(__FILE__), 'boot')
-
-  i.e.
-
-       require File.join(File.dirname(__FILE__), 'boot')
-       require 'odbc_adapter'
+    # gem install -r activerecord-odbc-adapter --include-dependencies
 
 
 === Installation as a Plugin
@@ -144,23 +132,7 @@ e.g. <tt>ruby script/plugin install odbc-rails</tt>
 ==== Manual Plugin Installation
 
 You can also install the plugin manually by unpacking the sources into the
-vendor/plugins directory of your Rails application. If you use this method,
-you must run install.rb immediately afterwards. This need only be done once.
-
-install.rb modifies your application's config/environment.rb file, adding a
-line to ensure that the database adapter plugin is initialized before
-ActiveRecord. i.e.
-
-    require File.join(File.dirname(__FILE__), 'boot')
-
-    # Added by OpenLink ODBC Adapter (odbc-rails) plugin
-    Rails::Initializer.run(:load_plugins)
-
-    Rails::Initializer.run do |config|
-
-Without this change, Rails attempts to initialize ActiveRecord before it loads 
-any plugins, causing an AdapterNotFound error. install.rb saves a copy of 
-environment.rb before making any changes.
+vendor/plugins directory of your Rails application.
 
 === Custom installation script
 
@@ -222,45 +194,6 @@ steps yourself.
 
 * Copy the odbcext_*.rb files to the ACTIVE_RECORD_ROOT/lib/active_record/vendor/ directory
 
-* Enable loading of the adapter (see below)
-
-
-== Enabling Loading of the Adapter
-
-This step is only necessary if the adapter was installed either as a gem or
-by copying files into your Rails core manually. It is not required if the
-adapter was installed as a plugin, using <tt>rake install</tt> or using
-install_odbc.rb.
-
-There are two ways to enable loading of the adapter:
-
-1. Modify active_record.rb in your Rails 'core', adding the ODBC adapter to
-   the list of adapters recognized by ActiveRecord:
-
-   * Edit ACTIVE_RECORD_ROOT/lib/active_record.rb, appending `odbc' to the line:
-
-       RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql sqlite firebird sqlserver db2 oracle sybase openbase)
-
-     i.e.
-
-       RAILS_CONNECTION_ADAPTERS = %w( mysql postgresql ... openbase odbc)
-
-     *or*
-
-2. Modify your Rails application's configuration to <tt>require</tt> the
-   adapter:
-
-
-   * Add a <tt>require</tt> to your config/environment.rb immediately after
-     the line
-
-       require File.join(File.dirname(__FILE__), 'boot')
-
-     i.e.
-
-       require File.join(File.dirname(__FILE__), 'boot')
-       require 'odbc_adapter'
-
 == Configuring the Adapter
 
 Examples of the required connection parameters can be found in
@@ -271,7 +204,6 @@ If you enable call-tracing by setting :trace => true,  specify the
 logger output file as illustrated in connection.rb, e.g.
 
     ActiveRecord::Base.logger = Logger.new("debug_odbc.log")
-
 
 == License
 

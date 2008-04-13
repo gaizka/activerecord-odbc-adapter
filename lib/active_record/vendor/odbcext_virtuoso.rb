@@ -92,12 +92,11 @@ module ODBCExt
   def quoted_date(value)
     @logger.unknown("ODBCAdapter#quoted_date>") if @trace
     @logger.unknown("args=[#{value}]") if @trace        
-    case value
       # Ruby Time class includes a date component and so must be
       # mapped to a Virtuoso DateTime type, not a Virtuoso Time type.
-      when Time, DateTime
+      if value.acts_like?(:time) # Time, DateTime
           %Q!stringdate('#{value.strftime("%Y-%m-%d %H:%M:%S")}')!
-      when Date
+      else # Date
           %Q!d('#{value.strftime("%Y-%m-%d")}')!
       end
   end

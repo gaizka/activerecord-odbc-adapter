@@ -96,7 +96,7 @@ module ODBCExt
     @logger.unknown("ODBCAdapter#add_column>") if @trace
     @logger.unknown("args=[#{table_name}|#{column_name}]") if @trace
     
-    sql = "ALTER TABLE #{table_name} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+    sql = "ALTER TABLE #{quote_table_name(table_name)} ADD #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
     sql << " DEFAULT #{quote(options[:default], options[:column])}" unless options[:default].nil?
 
     # Ingres requires that if 'ALTER TABLE table ADD column' specifies a NOT NULL constraint,
@@ -115,7 +115,7 @@ module ODBCExt
   def remove_column(table_name, column_name)
     @logger.unknown("ODBCAdapter#remove_column>") if @trace
     @logger.unknown("args=[#{table_name}|#{column_name}]") if @trace
-    execute "ALTER TABLE #{table_name} DROP #{quote_column_name(column_name)} RESTRICT"
+    execute "ALTER TABLE #{quote_table_name(table_name)} DROP #{quote_column_name(column_name)} RESTRICT"
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise ActiveRecord::ActiveRecordError, e.message

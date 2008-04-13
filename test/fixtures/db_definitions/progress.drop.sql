@@ -29,6 +29,8 @@ drop table subscribers;
 drop table tasks;
 drop table topics;
 drop table numeric_data;
+drop table mixed_case_monkeys;
+drop table minimalistics;
 
 drop sequence accounts_seq;
 drop sequence authors_seq;
@@ -61,3 +63,5 @@ drop sequence subscribers_seq;
 drop sequence tasks_seq;
 drop sequence topics_seq;
 drop sequence numeric_data_seq;
+drop sequence mixed_case_monkeys_seq;
+drop sequence minimalistics_seq;

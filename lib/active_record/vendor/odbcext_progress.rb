@@ -120,7 +120,7 @@ module ODBCExt
     @logger.unknown("ODBCAdapter#remove_column>") if @trace
     # Although this command is documented in the OpenEdge SQL Reference,
     # it returns error -20024 ("Sorry, operation not yet implemented").
-    execute "ALTER TABLE #{table_name} DROP COLUMN #{quote_column_name(column_name)}"
+    execute "ALTER TABLE #{quote_table_name(table_name)} DROP COLUMN #{quote_column_name(column_name)}"
   rescue Exception => e
     @logger.unknown("exception=#{e}") if @trace
     raise ActiveRecord::ActiveRecordError, e.message

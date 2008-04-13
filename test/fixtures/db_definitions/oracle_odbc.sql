@@ -283,3 +283,14 @@ create table numeric_data (
 );
 create sequence numeric_data_seq minvalue 10000;
 
+create table mixed_case_monkeys (
+  "monkeyID" number(10) not null,
+  "fleaCount" number(10) default null,
+  primary key (monkeyID)
+);
+create sequence mixed_case_monkeys_seq minvalue 10000;
+
+create table minimalistics (
+  id number(10) not null primary key
+);
+create sequence minimalistics_seq minvalue 10000;
