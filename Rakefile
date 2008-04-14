@@ -40,7 +40,7 @@ require "support/rake/rails_plugin_package_task"
 #
 PKG_NAME     = 'activerecord-odbc-adapter'
 PKG_SUMMARY  = "ODBC Data Adapter for ActiveRecord"
-PKG_VERSION  = '2.0-rc1'
+PKG_VERSION  = '1.9.9'
 PKG_HOMEPAGE = 'http://odbc-rails.rubyforge.org'
 PKG_AUTHOR = "Carl Blakeley"
 PKG_AUTHOR_EMAIL = "cblakeley@openlinksw.co.uk"
