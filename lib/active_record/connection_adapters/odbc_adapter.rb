@@ -36,21 +36,48 @@ begin
         config = config.symbolize_keys      
         if config.has_key?(:dsn)
           dsn = config[:dsn]
+          username = config[:username] ? config[:username].to_s : nil
+          password = config[:password] ? config[:password].to_s : nil
+        elsif config.has_key?(:conn_str)
+          connstr = config[:conn_str]
         else
-          raise ActiveRecordError, "No data source name (DSN) specified."
+          raise ActiveRecordError, "No data source name (:dsn) or connection string (:conn_str) specified."
         end
-        username = config[:username] ? config[:username].to_s : nil
-        password = config[:password] ? config[:password].to_s : nil
-        trace = config[:trace].nil? ? false : config[:trace]
-        conv_num_lits = config[:convert_numeric_literals].nil? ? false : config[:convert_numeric_literals]
-        emulate_bools = config[:emulate_booleans].nil? ? false : config[:emulate_booleans]
+
+        trace = config[:trace] || false
+        conv_num_lits = config[:convert_numeric_literals] || false
+        emulate_bools = config[:emulate_booleans] || false
         
-        conn = ODBC::connect(dsn, username, password)      
+        if config.has_key?(:dsn)
+	  # Connect using dsn, username, password
+          conn = ODBC::connect(dsn, username, password)      
+          conn_opts = { 
+              :dsn => dsn, :username => username, :password => password, 
+              :trace => trace, :conv_num_lits => conv_num_lits, 
+              :emulate_booleans => emulate_bools
+          }
+        else  
+	  # Connect using ODBC connection string 
+          # - supports DSN-based or DSN-less connections
+          # e.g. "DSN=virt5;UID=rails;PWD=rails"
+          #      "DRIVER={OpenLink Virtuoso};HOST=carlmbp;UID=rails;PWD=rails"
+          connstr_keyval_pairs = connstr.split(';')
+          driver = ODBC::Driver.new
+          driver.name = 'odbc'
+          driver.attrs = {}
+          connstr_keyval_pairs.each do |pair|
+            attr = pair.split('=')
+            driver.attrs[attr[0]] = attr[1] if attr.length.eql?(2)
+          end
+          conn = ODBC::Database.new.drvconnect(driver)
+          conn_opts = {
+              :conn_str => config[:conn_str], :driver => driver,
+              :trace => trace, :conv_num_lits => conv_num_lits, 
+              :emulate_booleans => emulate_bools
+          }
+        end
         conn.autocommit = true
-        
-        ConnectionAdapters::ODBCAdapter.new(conn, {:dsn => dsn, :username => username, 
-        :password => password, :trace => trace, :conv_num_lits => conv_num_lits, 
-        :emulate_booleans => emulate_bools}, logger)
+        ConnectionAdapters::ODBCAdapter.new(conn, conn_opts, logger)
       end
     end # class Base
     
@@ -62,6 +89,11 @@ begin
       # later), available from http://raa.ruby-lang.org/project/ruby-odbc
       #
       # == Status
+      #
+      # === 11-Apr-2008
+      #
+      # Added support for DSN-less connections (thanks to Ralf Vitasek).
+      # Added support for SQLAnywhere (thanks to Bryan Lahartinger).
       #
       # === 27-Feb-2007
       #
@@ -112,6 +144,14 @@ begin
       #   Specifies the database user.
       # <tt>:password</tt>::
       #   Specifies the database password.
+      # <tt>:conn_str</tt>::
+      #   Specifies an ODBC-style connection string. 
+      #   e.g. 
+      #        "DSN=virt5;UID=rails;PWD=rails" or
+      #        "DRIVER={OpenLink Virtuoso};HOST=carlmbp;UID=rails;PWD=rails"
+      #   Use either a) :dsn, :username and :password or b) :conn_str 
+      #   The :conn_str option in combination with the DRIVER keyword 
+      #   supports DSN-less connections.
       # <tt>:trace</tt>::
       #   If set to <tt>true</tt>, turns on simple call tracing to the log file
       #   referenced by ActiveRecord::Base.logger. If omitted, <tt>:trace</tt>
@@ -334,6 +374,15 @@ begin
                 :boolean_col_surrogate => nil                                
               }
             },
+            :sqlanywhere => {
+              :any_version => {
+                :primary_key => "INTEGER PRIMARY KEY DEFAULT AUTOINCREMENT",
+                :has_autoincrement_col => true,
+                :supports_migrations => true,
+                :supports_schema_names => true,
+                :supports_count_distinct => true,
+                :boolean_col_surrogate => "TINYINT"                                           }
+            },
             :virtuoso => {
               :any_version => {
                 :primary_key => "INT NOT NULL IDENTITY PRIMARY KEY",
@@ -527,7 +576,13 @@ begin
         def reconnect!
           @logger.unknown("ODBCAdapter#reconnect!>") if @@trace
           @connection.disconnect if @connection.connected?
-          @connection = ODBC::connect(*@connection_options)
+          if @connection_options.has_key?(:dsn)
+            @connection = ODBC::connect(@connection_options[:dsn], 
+                                        @connection_options[:username],
+                                        @connection_options[:password])
+          else
+            @connection = ODBC::Database.new.drvconnect(@connection_options[:driver])
+          end
           # There's no need to refresh the data source info in @dsInfo because
           # we're reconnecting to the same data source.
         rescue Exception => e
@@ -1483,6 +1538,8 @@ begin
             symbl = :sybase
           elsif dbmsName =~ /virtuoso/i
             symbl = :virtuoso 
+          elsif dbmsName =~ /SQLAnywhere/i
+            symbl = :sqlanywhere
           else
             raise ActiveRecord::ActiveRecordError, "ODBCAdapter: Unsupported database (#{dbmsName})"
           end
