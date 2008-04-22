@@ -19,6 +19,9 @@ The configuration instructions for v1.4 or earlier differ slightly from those
 included here for v2.0. Please refer to the documentation packaged with the
 respective adapter when using the previous releases.
 
+Added support for DSN-less connections (thanks to Ralf Vitasek).
+Added support for SQLAnywhere (thanks to Bryan Lahartinger).
+
 <b>23-Feb-2007</b>
 
 The adapter has been updated to support Rails 1.2.x / ActiveRecord 1.15.x.

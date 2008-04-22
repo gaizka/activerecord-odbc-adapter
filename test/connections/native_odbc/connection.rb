@@ -57,6 +57,29 @@ ActiveRecord::Base.establish_connection 'arunit'
 Course.establish_connection 'arunit2'
 
 ###########################################
+# Using DSN-less connection
+
+=begin
+ActiveRecord::Base.configurations = {
+  'arunit' => {
+    :adapter  => "odbc",
+    :conn_str => "Driver={OpenLink Lite for MySQL [6.0]};Database=rails_testdb1;Port=3306;UID=myuid;PWD=mypwd;"
+    :emulate_booleans => true,
+    :trace    => false
+  },
+ 'arunit2' => {
+    :adapter  => "odbc",
+    :conn_str => "Driver={OpenLink Lite for MySQL [6.0]};Database=rails_testdb2;Port=3306;UID=myuid;PWD=mypwd;"
+    :emulate_booleans => true,
+    :trace    => false
+  }
+}
+
+ActiveRecord::Base.establish_connection 'arunit'
+Course.establish_connection 'arunit2'
+=end
+
+###########################################
 # Using DB2
 
 =begin
