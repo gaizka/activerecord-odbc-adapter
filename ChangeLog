@@ -1,6 +1,18 @@
-2008-03-28 11:00  source
+2008-04-22 16:55  source
 
-	* Changes for Rails 2.0.x / ActiveRecord 2.0.x
+	* Added support for DSN-less connections
+
+2008-04-22 16:52  source
+
+	* Added initial support for SQL Anywhere
+
+2008-04-14 11:02  source
+
+	* Updated version to 1.9.9
+
+2008-04-13 22:46  source
+
+	* Added initial support for Rails 2.0.x / ActiveRecord 2.0.x
 
 2007-02-27 15:28  source
 
@@ -69,9 +81,17 @@
 
 	* Updated package version to 1.1
 
+2006-10-18 12:35  source
+
+	* Added unicode types (th)
+
 2006-10-10 14:13  source
 
 	* Less files to ignore
+
+2006-10-10 14:13  source
+
+	* Removed comment from notes about unicode support
 
 2006-10-10 10:57  source
 
