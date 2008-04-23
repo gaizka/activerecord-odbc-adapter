@@ -90,7 +90,7 @@ begin
       #
       # == Status
       #
-      # === 28-Mar-2008
+      # === 23-Apr-2008
       #
       # Adapter updated to support Rails 2.0.2 / ActiveRecord 2.0.2.
       # Added support for DSN-less connections (thanks to Ralf Vitasek).

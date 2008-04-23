@@ -1,5 +1,7 @@
-March 28, 2008, V2.0:
+April 23, 2008, V2.0:
   * Changes for Rails 2.0.x / ActiveRecord 2.0.x
+  * Added support for DSN-less connections
+  * Added support for SQLAnywhere
 
 February 27, 2007, V1.4:
   * Changes for Rails 1.2.x / ActiveRecord 1.15.x

@@ -1,11 +1,11 @@
 = OpenLink ODBC Data Adapter for Ruby on Rails
 
-(C) 2006 OpenLink Software
+(C) 2008 OpenLink Software
 
 
 == Status
 
-<b>28-Mar-2008</b>
+<b>23-Apr-2008</b>
 
 The adapter has been updated to support Rails 2.0.2 / ActiveRecord 2.0.2
 The new adapter (v2.0) is not recommended for use with earlier releases of
