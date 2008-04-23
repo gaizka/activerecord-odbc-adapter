@@ -39,7 +39,7 @@ require 'rake/rdoctask'
 #
 PKG_NAME     = 'odbc-rails'
 PKG_SUMMARY  = "ODBC Data Adapter for ActiveRecord."
-PKG_VERSION  = '1.4.9'
+PKG_VERSION  = '1.5'
 PKG_HOMEPAGE = 'http://odbc-rails.rubyforge.org'
 PKG_AUTHOR = "Carl Blakeley"
 PKG_AUTHOR_EMAIL = "cblakeley@openlinksw.co.uk"
