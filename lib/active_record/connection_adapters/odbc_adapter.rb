@@ -90,7 +90,7 @@ begin
       #
       # == Status
       #
-      # === 11-Apr-2008
+      # === 23-Apr-2008
       #
       # Added support for DSN-less connections (thanks to Ralf Vitasek).
       # Added support for SQLAnywhere (thanks to Bryan Lahartinger).

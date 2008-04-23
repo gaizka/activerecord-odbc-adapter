@@ -5,7 +5,7 @@
 
 == Status
 
-11-Apr-2008
+23-Apr-2008
 
 odbc-rails 1.5:
 * Amended configuration instructions for Rails 1.2.6 / ActiveRecord 1.15.6.
