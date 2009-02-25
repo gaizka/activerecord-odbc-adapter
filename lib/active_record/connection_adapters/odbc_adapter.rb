@@ -974,7 +974,15 @@ begin
             tblType = row[3]
             next if respond_to?("table_filter") && table_filter(schemaName, tblName, tblType)
             if @@dbmsLookups.get_info(@dbmsName, @dbmsMajorVer, :supports_schema_names)
-              tblNames << activeRecIdentCase(tblName) if schemaName.casecmp(currentUser) == 0
+              if currentUser.nil? || currentUser.blank?
+                # Cannot check schemaName against currentUser.
+                # Let's check by tblType
+                if tblType == "TABLE"
+                  tblNames << activeRecIdentCase(tblName) 
+                end
+              elsif schemaName.casecmp(currentUser) == 0
+                tblNames << activeRecIdentCase(tblName)
+              end
             else
               tblNames << activeRecIdentCase(tblName)
             end
