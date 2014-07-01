@@ -51,6 +51,8 @@ begin
         if config.has_key?(:dsn)
 	  # Connect using dsn, username, password
           conn = ODBC::connect(dsn, username, password)      
+	# for hana, the schema name must be uppercase
+	config[:schema] = config[:schema].upcase if config[:schema]
           conn_opts = { 
               :dsn => dsn, :username => username, :password => password, :schema=>config[:schema],
               :trace => trace, :conv_num_lits => conv_num_lits, 
@@ -998,6 +1000,7 @@ p "show tables"
             schemaName = row[1]
             tblName = row[2]
             tblType = row[3]
+p "schemaName=#{schemaName}, currentUser=#{currentUser}"
             next if respond_to?("table_filter") && table_filter(schemaName, tblName, tblType)
             if @@dbmsLookups.get_info(@dbmsName, @dbmsMajorVer, :supports_schema_names)
 #	p "schemaName=#{schemaName}, currentUser=#{currentUser}"
