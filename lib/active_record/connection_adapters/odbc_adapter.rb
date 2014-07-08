@@ -51,8 +51,10 @@ begin
         if config.has_key?(:dsn)
 	  # Connect using dsn, username, password
           conn = ODBC::connect(dsn, username, password)      
+	# for hana, the schema name must be uppercase
+	config[:schema] = config[:schema].upcase if config[:schema]
           conn_opts = { 
-              :dsn => dsn, :username => username, :password => password, :schema=>config[:schema],
+              :dsn => dsn, :username => username, :password => password, :schema=>config[:schema], :database=>config[:schema],
               :trace => trace, :conv_num_lits => conv_num_lits, 
               :emulate_booleans => emulate_bools
           }
@@ -77,7 +79,10 @@ begin
           }
         end
         conn.autocommit = true
-        ConnectionAdapters::ODBCAdapter.new(conn, conn_opts, logger)
+        ret = ConnectionAdapters::ODBCAdapter.new(conn, conn_opts, logger)
+	p "connection = #{ret}"
+	return ret
+
       end
     end # class Base
     
@@ -469,9 +474,20 @@ p " ODBC::SQL_USER_NAME=>#{ ODBC::SQL_USER_NAME}"
               begin
                 infoTypes[infoType] = @connection.get_info(infoType)
 		p "get_info(#{infoType})=>#{infoTypes[infoType]}"
-              rescue ODBC::Error
+              rescue ODBC::Error =>e
+	p "odbc error #{e.inspect}"
               end
             end
+begin
+    raise Exception.new
+rescue Exception=>e
+    stack = 100
+    if e.backtrace.size >=2 
+        stack  += 1
+        stack = e.backtrace.size-1 if stack >= e.backtrace.size
+        p e.backtrace[1..stack].join("\n") 
+    end
+end
           end
           
         end # class DSInfo
@@ -523,6 +539,7 @@ p " ODBC::SQL_USER_NAME=>#{ ODBC::SQL_USER_NAME}"
           
           # Caches SQLGetInfo output
           @dsInfo = DSInfo.new(connection)
+p "dsInfo=#{@dsInfo}"
           # Caches SQLGetTypeInfo output
           @typeInfo = nil 
           # Caches mapping of Rails abstract data types to DBMS native types.
@@ -542,9 +559,12 @@ p " ODBC::SQL_USER_NAME=>#{ ODBC::SQL_USER_NAME}"
           # Now we know which DBMS we're connected to, extend this ODBCAdapter 
           # instance with the appropriate DBMS specific extensions
           @odbcExtFile = "active_record/vendor/odbcext_#{@dbmsName}"
+p "extend file #{ @odbcExtFile}"
           begin     
             require "#{@odbcExtFile}"
-            self.extend ODBCExt
+            ret = self.extend ODBCExt
+p "extend ok"
+		ret
           rescue MissingSourceFile
             puts "ODBCAdapter#initialize> Couldn't find extension #{@odbcExtFile}.rb"        
           end
@@ -676,6 +696,11 @@ p " ODBC::SQL_USER_NAME=>#{ ODBC::SQL_USER_NAME}"
           @logger.unknown("ODBCAdapter#quote_column_name>") if @@trace
           @logger.unknown("args=[#{name}]") if @@trace        
           name = name.to_s if name.class == Symbol                
+
+	 # for hana
+p "quote column name"
+name = name.upcase	
+
           idQuoteChar = @dsInfo.info[ODBC::SQL_IDENTIFIER_QUOTE_CHAR]
 p "ODBC::SQL_IDENTIFIER_QUOTE_CHAR=#{idQuoteChar}"
           return name if !idQuoteChar || ((idQuoteChar = idQuoteChar.strip).length == 0)
@@ -852,6 +877,7 @@ p "12DBC::SQL_IDENTIFIER_QUOTE_CHAR=#{idQuoteChar}"
 =end        
           # Execute the query
           begin
+p "select_one: #{qry}"
             stmt = @connection.run(qry)
           rescue Exception => e
             @logger.unknown("exception=#{e}") if @@trace
@@ -913,6 +939,7 @@ p "execute sql:#{sql}"
             sequence_name = nil)
           @logger.unknown("ODBCAdapter#insert>") if @@trace
           @logger.unknown("args=[#{sql}|#{name}|#{pk}|#{id_value}|#{sequence_name}]") if @@trace
+p "insert:#{sql}"
           insert_sql(sql, name, pk, id_value, sequence_name)
         end
         
@@ -998,6 +1025,7 @@ p "show tables"
             schemaName = row[1]
             tblName = row[2]
             tblType = row[3]
+p "schemaName=#{schemaName}, currentUser=#{currentUser}"
             next if respond_to?("table_filter") && table_filter(schemaName, tblName, tblType)
             if @@dbmsLookups.get_info(@dbmsName, @dbmsMajorVer, :supports_schema_names)
 #	p "schemaName=#{schemaName}, currentUser=#{currentUser}"
@@ -1078,6 +1106,8 @@ p "show tables"
               colScale, @odbcExtFile+"_col", booleanColSurrogate, native_database_types())
           end
           stmt.drop
+p "columns for table #{table_name}"
+	p cols.inspect
           cols
         rescue Exception => e
           @logger.unknown("exception=#{e}") if @@trace
@@ -1399,7 +1429,11 @@ p "===>pre_insert_sql:"+sql
             pre_insert(sql, name, pk, id_value, sequence_name) if respond_to?("pre_insert")
 	p "===>insert_sql:"+sql
             stmt = @connection.run(sql)
+	p "===>insert_sql ok"
             table = sql.split(" ", 4)[2]
+p "table=#{table}"
+	table = table.scan(/[\'\"]\w+[\'\"]\.[\'\"](\w+)[\'\"]/).first
+	p "===>table=#{table}, pk=#{pk}, stmt=#{stmt}"
             res = id_value || last_insert_id(table, sequence_name || 
                 default_sequence_name(table, pk), stmt)
           rescue Exception => e
@@ -1561,6 +1595,7 @@ p "===>pre_insert_sql:"+sql
           
           # Execute the query
           begin
+	p "run sql #{qry}"
             stmt = @connection.run(qry)
           rescue Exception => e
             stmt.drop unless stmt.nil?
