@@ -1,4 +1,4 @@
-#
+#3
 #  $Id: odbcext_mysql.rb,v 1.3 2008/04/13 22:46:09 source Exp $
 #
 #  OpenLink ODBC Adapter for Ruby on Rails
@@ -79,12 +79,21 @@ module ODBCExt
   # This method assumes that the table inserted into has a primary key defined
   # as INT AUTOINCREMENT
   def last_insert_id(table, sequence_name, stmt = nil)
+p "last_insert_id, #{table}, #{sequence_name}"
     @logger.unknown("ODBCAdapter#last_insert_id>") if @trace
     #select_value("select LAST_INSERT_ID()", 'last_insert_id')
+	if sequence_exists?(sequence_name)
           uncached do
             #select_value("SELECT #{quote_table_name(sequence_name)}.CURRVAL FROM DUMMY")
+            select_value("SELECT #{quote_table_name(sequence_name)}.NEXTVAL FROM DUMMY")
+           
             select_value("SELECT #{quote_table_name(sequence_name)}.CURRVAL FROM DUMMY")
           end
+	elsif has_column?(table, "ID")
+	    return select_value("select max(ID) from #{quote_table_name(table)}")
+    else 
+        return nil
+	end
   end
   
   # ------------------------------------------------------------------------
@@ -304,7 +313,11 @@ p "quote column name #{name}"
           @logger.unknown("ODBCAdapter#quote_column_name>") if @trace
           @logger.unknown("args=[#{name}]") if @trace
           name = name.to_s if name.class == Symbol
-name = name.upcase
+           if name.class == String
+              name = name.upcase
+          elsif name.class == Array
+              name.map!(&:upcase)
+          end
           idQuoteChar = @dsInfo.info[ODBC::SQL_IDENTIFIER_QUOTE_CHAR]
 p "00ODBC::SQL_IDENTIFIER_QUOTE_CHAR=#{idQuoteChar}"
           return name if !idQuoteChar || ((idQuoteChar = idQuoteChar.strip).length == 0)
@@ -342,9 +355,6 @@ p "12DBC::SQL_IDENTIFIER_QUOTE_CHAR=#{idQuoteChar}"
 	#	p "schema #{schemaName} #{@connection_options[:schema]}"
 		@connection_options[:schema].upcase == schemaName.upcase		
 	end
-	def tables
-          select_values "SELECT TABLE_NAME FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
-        end
         def tables1(name = nil)
 p "show hdb tables, schema=#{@connection_options[:schema]}"
           @logger.unknown("ODBCAdapter#tables>") if @trace
@@ -389,7 +399,7 @@ p "show hdb tables, schema=#{@connection_options[:schema]}"
         def create_sequence(sequence, options = {})
           create_sql = "CREATE SEQUENCE #{quote_table_name(sequence)} INCREMENT BY 1 START WITH 1 NO CYCLE"
           execute create_sql                
-	  select_value("SELECT #{quote_table_name(sequence)}.NEXTVAL FROM DUMMY")
+	      select_value("SELECT #{quote_table_name(sequence)}.NEXTVAL FROM DUMMY")
         end
 
         def rename_sequence(table_name, new_name)
@@ -406,6 +416,18 @@ p "show hdb tables, schema=#{@connection_options[:schema]}"
         end
         # === Tables =========================================== #              
 
+	def tables
+          select_values "SELECT TABLE_NAME FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
+        end
+          def unqualify_table_name(table_name)
+            table_name.to_s.split('.').last.tr('[]','')
+          end
+        def table_exists?(table_name)
+          return false if table_name.blank?
+          
+          unquoted_table_name = unqualify_table_name(table_name)
+          super || tables.include?(unquoted_table_name) || views.include?(unquoted_table_name)
+        end
         def table_structure(table_name)
           returning structure = select_rows("SELECT COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
             raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
@@ -427,6 +449,9 @@ p "columns for table #{table_name}, #{name}..."
           add_column_options!(add_column_sql, options)
           add_column_sql << ")"
           execute(add_column_sql)
+        end
+        def has_column?(table_name, column_name)
+            columns(table_name).find { |c| c.name == column_name.to_s } == nil
         end
 
         def change_column(table_name, column_name, type, options = {})
@@ -463,5 +488,18 @@ p "columns for table #{table_name}, #{name}..."
                 
         def views
           select_values "SELECT VIEW_NAME FROM VIEWS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
+        end
+	
+	def sequences
+	  select_values "SELECT SEQUENCE_NAME FROM SEQUENCES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", "SCHEMA"
+	end
+        def sequence_exists?(sequence_name)
+          return false if sequence_name.blank?
+
+          unquoted_table_name = unqualify_table_name(sequence_name)
+          p "find seq #{unquoted_table_name}"
+          p "sequences:#{sequences.inspect}"
+          
+          sequences.include?(unquoted_table_name) 
         end
 end

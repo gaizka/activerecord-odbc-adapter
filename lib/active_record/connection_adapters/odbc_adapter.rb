@@ -567,6 +567,8 @@ p "extend ok"
 		ret
           rescue MissingSourceFile
             puts "ODBCAdapter#initialize> Couldn't find extension #{@odbcExtFile}.rb"        
+          rescue Exception=>e
+            p "Exception:#{e.inspect}"
           end
         end
         
@@ -699,7 +701,12 @@ p "extend ok"
 
 	 # for hana
 p "quote column name"
-name = name.upcase	
+            if name.class == String
+            name = name.upcase
+        elsif name.class == Array
+            name.map!(&:upcase)
+        end
+            	
 
           idQuoteChar = @dsInfo.info[ODBC::SQL_IDENTIFIER_QUOTE_CHAR]
 p "ODBC::SQL_IDENTIFIER_QUOTE_CHAR=#{idQuoteChar}"
@@ -949,7 +956,7 @@ p "insert:#{sql}"
         def default_sequence_name(table, column)
           @logger.unknown("ODBCAdapter#default_sequence_name>") if @@trace
           @logger.unknown("args=[#{table}|#{column}]") if @@trace
-          "#{table}_seq"
+          "#{table}_SEQ"
         end
         
         # Set the sequence to the max value of the table�s column.
@@ -1432,11 +1439,13 @@ p "===>pre_insert_sql:"+sql
 	p "===>insert_sql ok"
             table = sql.split(" ", 4)[2]
 p "table=#{table}"
-	table = table.scan(/[\'\"]\w+[\'\"]\.[\'\"](\w+)[\'\"]/).first
+	table = table.scan(/[\'\"]\w+[\'\"]\.[\'\"](\w+)[\'\"]/).first[0]
 	p "===>table=#{table}, pk=#{pk}, stmt=#{stmt}"
             res = id_value || last_insert_id(table, sequence_name || 
                 default_sequence_name(table, pk), stmt)
           rescue Exception => e
+              p e.inspect
+                 p e.backtrace[0..e.backtrace.size-1].join("\n\r")
             @logger.unknown("exception=#{e}") if @@trace
             if @dbmsName == :virtuoso  && id_value.nil? && e.message =~ /sr197/i
               # Error: Non unique primary key
