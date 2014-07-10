@@ -1382,7 +1382,7 @@ p "===>create sql:"+create_sql
         
         # Returns an array of the values of the first column in a select.
         def select_values(sql, name = nil)
-p "select_all sql=>#{sql}, name=>#{name}"
+p "select_values sql=>#{sql}, name=>#{name}"
           @logger.unknown("ODBCAdapter#select_values>") if @@trace
           @logger.unknown("args=[#{sql}|#{name}]") if @@trace        
           result = select_all(sql, name)
@@ -1443,6 +1443,9 @@ p "table=#{table}"
 	p "===>table=#{table}, pk=#{pk}, stmt=#{stmt}"
             res = id_value || last_insert_id(table, sequence_name || 
                 default_sequence_name(table, pk), stmt)
+            res = 0 if !res
+            p "insert_sql return #{res}"
+            res
           rescue Exception => e
               p e.inspect
                  p e.backtrace[0..e.backtrace.size-1].join("\n\r")
