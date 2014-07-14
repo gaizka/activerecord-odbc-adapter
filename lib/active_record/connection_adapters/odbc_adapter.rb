@@ -1114,7 +1114,7 @@ p "schemaName=#{schemaName}, currentUser=#{currentUser}"
           end
           stmt.drop
 p "columns for table #{table_name}"
-	p cols.inspect
+    # p cols.inspect
           cols
         rescue Exception => e
           @logger.unknown("exception=#{e}") if @@trace
@@ -1811,7 +1811,7 @@ p "table=#{table}"
           # The conversions below are consistent with the mappings in
           # ODBCColumn#mapSqlTypeToGenericType and Column#klass.
           res = value
-p "convertOdbcValToGenericVal:#{value}"
+# p "convertOdbcValToGenericVal:#{value}"
           case value
           when ODBC::TimeStamp
             res = Time.gm(value.year, value.month, value.day, value.hour, 

@@ -497,8 +497,8 @@ p "columns for table #{table_name}, #{name}..."
           return false if sequence_name.blank?
 
           unquoted_table_name = unqualify_table_name(sequence_name)
-          p "find seq #{unquoted_table_name}"
-          p "sequences:#{sequences.inspect}"
+          # p "find seq #{unquoted_table_name}"
+          # p "sequences:#{sequences.inspect}"
           
           sequences.include?(unquoted_table_name) 
         end
