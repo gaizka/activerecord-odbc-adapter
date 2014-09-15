@@ -774,6 +774,12 @@ p "12DBC::SQL_IDENTIFIER_QUOTE_CHAR=#{idQuoteChar}"
         
         # Begins a transaction (and turns off auto-committing).
         def begin_db_transaction
+            p "begin db transaction"
+            # begin
+            #     raise Exception.new
+            # rescue Exception=>e
+            #  p e.backtrace
+            # end
           @logger.unknown("ODBCAdapter#begin_db_transaction>") if @@trace
           @connection.autocommit = false
         rescue Exception => e
@@ -783,6 +789,17 @@ p "12DBC::SQL_IDENTIFIER_QUOTE_CHAR=#{idQuoteChar}"
         
         # Commits the transaction (and turns on auto-committing).
         def commit_db_transaction
+            p "commit db transaction"
+            # begin
+            #     raise Exception.new
+            # rescue Exception=>e
+            #     stack = 100
+            #     if e.backtrace.size >=2 
+            #         stack  += 1
+            #         stack = e.backtrace.size-1 if stack >= e.backtrace.size
+            #         p e.backtrace[1..stack].join("\n") 
+            #     end
+            # end
           @logger.unknown("ODBCAdapter#commit_db_transaction>") if @@trace
           @connection.commit
           # ODBC chains transactions. Turn autocommit on after commit to
@@ -795,6 +812,8 @@ p "12DBC::SQL_IDENTIFIER_QUOTE_CHAR=#{idQuoteChar}"
         
         # Rolls back the transaction (and turns on auto-committing). 
         def rollback_db_transaction
+            p "rollback db transaction"
+            
           @logger.unknown("ODBCAdapter#rollback_db_transaction>") if @@trace
           @connection.rollback
           # ODBC chains transactions. Turn autocommit on after rollback to
